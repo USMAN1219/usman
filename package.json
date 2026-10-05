@@ -1,0 +1,12 @@
+{
+  "name": "smc-chart-reader",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node web/build.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "esbuild": "^0.28.2"
+  }
+}

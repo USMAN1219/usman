@@ -23,7 +23,9 @@
   --bull-soft: #10291f; --bear-soft: #2e1513; --warn-soft: #2b2010; color-scheme: dark }
 
 * { box-sizing: border-box }
-body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); padding-inline: 16px; padding-block: 20px 48px }
+[hidden] { display: none !important }
+img, canvas { max-width: 100% }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); padding-inline: 16px; padding-block: 20px 48px }
 .wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px }
 header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px }
 h1 { font: 800 clamp(26px, 4vw, 34px)/1.05 var(--f-display); font-stretch: 80%; letter-spacing: -.01em; margin: 0; text-wrap: balance }
@@ -31,15 +33,17 @@ h1 span { color: var(--accent) }
 .sub { color: var(--muted); margin: 0; max-width: 62ch }
 .clock { font: 500 13px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font: 600 11px var(--f-body); letter-spacing: .06em; text-transform: uppercase; background: var(--sunk); color: var(--muted); border: 1px solid var(--line) }
-.chip.on { background: var(--bull-soft); color: var(--bull); border-color: transparent }
-.chip.off { background: var(--warn-soft); color: var(--warn); border-color: transparent }
+.chip.on, .chip.st-bull { background: var(--bull-soft); color: var(--bull); border-color: transparent }
+.chip.off, .chip.st-warn { background: var(--warn-soft); color: var(--warn); border-color: transparent }
+.chip.st-bear { background: var(--bear-soft); color: var(--bear); border-color: transparent }
+.muted { color: var(--muted) }
 
 .grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start }
 @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; min-width: 0 }
 .label { font: 600 11px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
 
-.drop { border: 1.5px dashed var(--line); border-radius: var(--r); background: var(--sunk); padding: 22px 14px; text-align: center; cursor: pointer; display: grid; gap: 4px; transition: border-color .15s, background .15s }
+.drop { border: 1.5px dashed var(--line); border-radius: var(--r); background: var(--sunk); padding: 22px 14px; text-align: center; cursor: pointer; display: grid; gap: 4px; transition: border-color .15s }
 .drop:hover, .drop.drag, .drop:focus-visible { border-color: var(--accent); outline: none }
 .drop strong { font: 700 16px var(--f-display); font-stretch: 90% }
 .drop small { color: var(--muted) }
@@ -48,16 +52,22 @@ h1 span { color: var(--accent) }
 .thumb .img { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--sunk) }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
 .thumb button.x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; font-size: 14px; line-height: 1 }
-.thumb select { width: 100% }
 
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
 .fields .full { grid-column: 1 / -1 }
 .field { display: grid; gap: 5px; min-width: 0 }
 input, select, textarea { font: 500 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0 }
+input[type="checkbox"] { width: auto }
 input.mono { font-family: var(--f-mono) }
 textarea { resize: vertical; min-height: 60px }
-input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
-.hint { color: var(--muted); font-size: 12.5px }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.hint { color: var(--muted); font-size: 12.5px; margin: 0 }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px }
+
+details.box { border: 1px solid var(--line); border-radius: var(--r); background: var(--sunk); padding: 0 14px }
+details.box > summary { cursor: pointer; padding: 12px 0; font: 700 14px var(--f-display); font-stretch: 90%; display: flex; justify-content: space-between; gap: 8px; align-items: center }
+details.box[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 12px }
+details.box .inner { display: grid; gap: 12px; padding-bottom: 14px }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap }
 button.primary { flex: 1; min-width: 160px; font: 700 15px var(--f-display); font-stretch: 90%; letter-spacing: .02em; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); cursor: pointer }
@@ -66,38 +76,54 @@ button.ghost { font: 600 13px var(--f-body); padding: 10px 14px; border-radius: 
 
 .out { display: grid; gap: 16px; min-width: 0 }
 .status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px }
-.pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite }
+.pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; flex: none }
 @keyframes pulse { 50% { opacity: .25 } }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none } }
 .example-tag { justify-self: start }
 
-.move { display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--r); background: var(--sunk); border: 1px solid var(--line) }
-.move .dir { font: 800 28px/1.1 var(--f-display); font-stretch: 78% }
+.move { display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line) }
+.move .dir { font: 800 30px/1.1 var(--f-display); font-stretch: 78% }
 .move.up .dir { color: var(--bull) } .move.down .dir { color: var(--bear) } .move.side .dir { color: var(--warn) }
 .move p { margin: 0 }
+.keylevel { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 14px 18px; border-radius: var(--r); background: var(--sunk); border: 1px solid var(--line) }
+.kl-price { font: 600 22px var(--f-mono) }
+.kl-body { display: grid; gap: 6px; flex: 1; min-width: 220px }
+.kl-body p { margin: 0; font-size: 14px }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0 }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0 }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap }
 .card h3 { margin: 0; font: 700 17px var(--f-display); font-stretch: 88% }
+.tags { display: flex; gap: 6px; align-items: center }
 .pill { font: 700 12px var(--f-mono); padding: 3px 10px; border-radius: 999px; letter-spacing: .04em }
 .pill.long { background: var(--bull-soft); color: var(--bull) }
 .pill.short { background: var(--bear-soft); color: var(--bear) }
 .pill.none { background: var(--sunk); color: var(--muted) }
+.grade { font: 700 12px var(--f-mono); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--ink) }
+.grade.g-Ap, .grade.g-A { border-color: var(--bull); color: var(--bull) }
+.grade.g-C { border-color: var(--warn); color: var(--warn) }
+.setup { font: 600 12px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--accent) }
 table.lv { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
 table.lv td { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px }
 table.lv td:nth-child(2) { font-family: var(--f-mono); text-align: right }
-table.lv td:nth-child(3) { font-family: var(--f-mono); text-align: right; color: var(--muted); width: 70px }
+table.lv td:nth-child(3) { font-family: var(--f-mono); text-align: right; color: var(--muted); width: 64px }
 table.lv tr.sl td:nth-child(2) { color: var(--bear) }
 table.lv tr.tp td:nth-child(2) { color: var(--bull) }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px; margin: 0 }
 .kv dt { color: var(--muted) } .kv dd { margin: 0; font-family: var(--f-mono); text-align: right; min-width: 0; overflow-wrap: anywhere }
-.trigger { font-size: 13.5px; color: var(--muted); margin: 0 }
+.trigger { font-size: 14px; margin: 0 }
 .conf { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden }
 .conf i { display: block; height: 100%; background: var(--accent) }
+.mgmt { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line) }
+.mgmt ul { margin: 0; padding-left: 18px; font-size: 13.5px; display: grid; gap: 4px }
+.alt { padding: 14px 18px; border-radius: var(--r); background: var(--surface); border: 1px dashed var(--line); display: grid; gap: 4px }
+.alt p { margin: 0; font-size: 14px }
 .warns { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none }
 .warns li { padding: 9px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--ink); font-size: 13.5px; border-left: 3px solid var(--warn) }
 .warns li.bad { background: var(--bear-soft); border-left-color: var(--bear) }
+figure.map { margin: 0; display: grid; gap: 6px }
+figure.map canvas { width: 100%; height: auto; border-radius: var(--r); border: 1px solid var(--line) }
+figure.map figcaption { color: var(--muted); font-size: 12.5px }
 
 .report { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; min-width: 0; overflow-wrap: anywhere }
 .report h3 { font: 700 16px var(--f-display); font-stretch: 88%; margin: 18px 0 6px; padding-top: 14px; border-top: 1px solid var(--line) }
@@ -107,6 +133,8 @@ table.lv tr.tp td:nth-child(2) { color: var(--bull) }
 .report li { margin: 3px 0 }
 .report-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap }
 .err { padding: 12px 14px; border-radius: 8px; background: var(--bear-soft); border-left: 3px solid var(--bear) }
+.concept ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; max-width: 80ch }
+.concept p { margin: 0; font-size: 14px; max-width: 80ch }
 footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
 a { color: var(--accent) }
 </style>
@@ -115,14 +143,14 @@ a { color: var(--accent) }
   <header>
     <div style="display:grid;gap:6px;min-width:0">
       <h1>SMC Chart <span>Reader</span></h1>
-      <p class="sub">Charts ki screenshots daalein (1m se 1D tak). Claude unhein bina indicators ke parh kar structure, liquidity, FVG/OB, premium/discount dekhta hai aur agla move aur trade plan batata hai.</p>
+      <p class="sub">Ek pair ke 1m se 1D tak ke charts ki screenshots daalein. Bot trend, structure, liquidity, supply/demand aur real/fake breakout dekh kar ek entry plan deta hai: entry, SL, TP, lot size, aur trade kitni der rakhni hai.</p>
     </div>
     <div class="clock"><span id="clockTxt">—</span><span id="kzChip" class="chip">—</span></div>
   </header>
 
   <div class="grid">
     <section class="panel" aria-label="Charts aur settings">
-      <div class="label">1 · Charts</div>
+            <div class="label">1 · Charts</div>
       <div id="drop" class="drop" tabindex="0" role="button" aria-label="Chart screenshots upload karein">
         <strong>Screenshots yahan drop karein</strong>
         <small>ya click karein · Ctrl+V se paste bhi ho sakta hai</small>
@@ -130,7 +158,7 @@ a { color: var(--accent) }
       </div>
       <input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
       <div id="thumbs" class="thumbs"></div>
-      <p class="hint">Har pic ka timeframe neeche select karein. Price scale (right side) pic mein saaf nazar aaye, faltu toolbar crop kar dein.</p>
+      <p class="hint">Har pic ka timeframe select karein. Price scale (right side) pic mein saaf nazar aaye, faltu toolbar crop kar dein.</p>
 
       <div class="label">2 · Account</div>
       <div class="fields">
@@ -142,11 +170,11 @@ a { color: var(--accent) }
       </div>
 
       <div class="actions">
-        <button id="go" class="primary" disabled>Analyse karein</button>
+        <button id="go" class="primary" disabled>Entry dhoondein</button>
         <button id="stop" class="ghost" hidden>Stop</button>
         <button id="clear" class="ghost">Clear</button>
       </div>
-      <p class="hint">News: is page se Forex Factory check nahi ho sakta. Entry se pehle <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">Forex Factory calendar</a> par red-folder news khud dekh lein.</p>
+      <p class="hint">News yeh page check nahi karta. Entry se pehle <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">Forex Factory calendar</a> par red-folder news dekh lein.</p>
     </section>
 
     <section class="out" aria-live="polite">
@@ -154,384 +182,136 @@ a { color: var(--accent) }
       <div id="errBox" class="err" hidden></div>
       <span id="exampleTag" class="chip example-tag">Namoona — yeh example hai, live analysis nahi</span>
       <div id="move"></div>
+      <div id="keylevel"></div>
+      <div id="map"></div>
       <div id="cards" class="cards"></div>
+      <div id="alt"></div>
       <ul id="warns" class="warns"></ul>
       <div id="report" class="report" hidden>
         <div class="report-head"><span class="label">Poori analysis</span><button id="copy" class="ghost">Copy</button></div>
         <div id="reportBody"></div>
       </div>
+
+      <details class="box concept">
+        <summary>Bot ka tareeqa: entry kaise dhoondta hai</summary>
+        <div class="inner">
+          <ol>
+            <li><b>Trend pehle (trend is your friend).</b> 1D/4H/1H par higher highs/lows ya lower highs/lows. Main trade hamesha isi direction mein; ulti trade ho to bot "counter-trend" ki warning deta hai.</li>
+            <li><b>Structure.</b> BOS (body close se purana high/low toota, trend jaari) aur CHoCH (pehla ulta break, trend badalne ka ishara).</li>
+            <li><b>Liquidity.</b> Equal highs/lows, Asia high/low, pichle din ka high/low. Bari parties wahan ke stop losses lene ke baad hi chalti hain, is liye bot dekhta hai kaunsi liquidity le li gayi aur kaunsi agla target hai.</li>
+            <li><b>Key level.</b> Strong support/resistance, supply/demand zone, Order Block ya FVG. Jis level par kai timeframes milte hain wahi chuna jata hai.</li>
+            <li><b>Premium/Discount.</b> Range ka beech (0.5). Buy sasti jagah (neeche aadhe) se, sell mehngi jagah (upar aadhe) se.</li>
+            <li><b>Breakout real hai ya fake?</b> Real: candle ki body level ke bahar close, bari momentum candle, peeche FVG, retest par level hold. Fake: sirf wick bahar, candle wapas andar close, foran ulta move, aksar Asia session mein.</li>
+            <li><b>Entry (1m/5m).</b> Teen tareeqe: retest (level toota, wapas aaya, hold kiya), breakout (momentum ke baad pehla pullback), liquidity sweep reversal (fake breakout ke baad ulti taraf). Entry tabhi jab chote timeframe par CHoCH ya rejection mile.</li>
+            <li><b>SL aur TP.</b> SL us wick/zone ke peeche jahan idea ghalat sabit ho. TP1 pehli liquidity par, TP2 agli bari liquidity par. Kam az kam 1:3 ki koshish.</li>
+            <li><b>Trade management.</b> Har trade ke saath waqt diya jata hai. TP1 par aadha profit aur SL entry par, baqi trail. Waqt guzar jaye aur TP1 na aaye to trade band, taa ke achi trade zyada der hold karne se SL na lage.</li>
+          </ol>
+          <p class="muted">Grade A+/A: zyada tar cheezein match. B: theek. C: kamzor, chhota size ya sirf confirmation ke baad.</p>
+        </div>
+      </details>
     </section>
   </div>
 
   <footer>Levels screenshot se parhe jaate hain aur galat ho sakte hain; har entry se pehle live chart par confirm karein aur risk 1–2% se zyada na rakhein. Yeh analysis mein madad ka tool hai, financial advice nahi.</footer>
 </div>
 
-<script>
-(() => {
-  const $ = (id) => document.getElementById(id);
-  const TF = ["1W", "1D", "4H", "2H", "1H", "30m", "15m", "5m", "3m", "1m"];
-  const state = { charts: [], sample: null, maxImages: 10, ctl: null, raw: "" };
+<script>(()=>{var K=`Tum ek senior Smart Money Concepts (SMC) / ICT price-action trader ho jo roz live market trade karta hai. Trader ne EK HI instrument ke alag alag timeframes ki chart screenshots bheji hain. Koi indicator use nahi hota: sirf candles aur price axis se pure price action parho.
 
-  // ---------- settings (per-browser convenience) ----------
-  const SETTINGS = ["pair", "balance", "risk", "contract"];
-  try {
-    const saved = JSON.parse(localStorage.getItem("smc-settings") || "{}");
-    for (const k of SETTINGS) if (saved[k] != null && saved[k] !== "") $(k).value = saved[k];
-  } catch {}
-  const saveSettings = () => {
-    try { localStorage.setItem("smc-settings", JSON.stringify(Object.fromEntries(SETTINGS.map((k) => [k, $(k).value])))); } catch {}
-  };
-  SETTINGS.forEach((k) => $(k).addEventListener("change", saveSettings));
-
-  // ---------- sessions / killzones (New York time) ----------
-  function nyParts(d = new Date()) {
-    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(d).map((x) => [x.type, x.value]));
-    return { wd: p.weekday, h: +p.hour, m: +p.minute };
-  }
-  function sessionInfo(d = new Date()) {
-    const { wd, h, m } = nyParts(d);
-    const t = h + m / 60;
-    const closed = wd === "Sat" || (wd === "Fri" && t >= 17) || (wd === "Sun" && t < 17);
-    const active = [];
-    if (t >= 20) active.push("Asia Session");
-    if (t >= 2 && t < 5) active.push("London Killzone");
-    if (t >= 7 && t < 10) active.push("New York Killzone");
-    if (t >= 10 && t < 12) active.push("London Close");
-    const kz = !closed && active.some((s) => s.includes("Killzone"));
-    const utc = d.toISOString().slice(0, 16).replace("T", " ");
-    const ny = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    return { closed, active: closed ? [] : active, kz, utc, ny, wd };
-  }
-  function renderClock() {
-    const s = sessionInfo();
-    $("clockTxt").textContent = `${s.utc} UTC · NY ${s.ny}`;
-    const chip = $("kzChip");
-    chip.className = "chip " + (s.kz ? "on" : "off");
-    chip.textContent = s.closed ? "Market band (weekend)" : s.kz ? s.active.find((x) => x.includes("Killzone")) : (s.active[0] || "Off-session");
-  }
-  renderClock();
-  setInterval(renderClock, 30000);
-
-  // ---------- chart intake ----------
-  function guessTf(name) {
-    const t = " " + name.toLowerCase().replace(/[_\-.]/g, " ") + " ";
-    let m;
-    if ((m = t.match(/\b(1|3|5|15|30)\s*(m|min|mins|minute)\b/)) || (m = t.match(/\bm(1|3|5|15|30)\b/))) return m[1] + "m";
-    if ((m = t.match(/\b(1|2|4)\s*(h|hr|hour)\b/)) || (m = t.match(/\bh(1|4)\b/))) return m[1] + "H";
-    if (/\b1?\s*(d|day|daily)\b/.test(t)) return "1D";
-    if (/\b1?\s*(w|week|weekly)\b/.test(t)) return "1W";
-    return "";
-  }
-  function addFiles(files) {
-    for (const f of files) {
-      if (!f.type.startsWith("image/")) continue;
-      if (state.charts.length >= state.maxImages) { showError(`Ek dafa mein ${state.maxImages} pics tak. Sab se zaroori timeframes rakhein.`); break; }
-      state.charts.push({ file: f, url: URL.createObjectURL(f), tf: guessTf(f.name || "") });
-    }
-    renderThumbs();
-  }
-  function renderThumbs() {
-    const box = $("thumbs");
-    box.replaceChildren(...state.charts.map((c, i) => {
-      const el = document.createElement("div");
-      el.className = "thumb";
-      const opts = ['<option value="">Timeframe?</option>', ...TF.map((t) => `<option${t === c.tf ? " selected" : ""}>${t}</option>`)].join("");
-      el.innerHTML = `<div class="img"><img alt="Chart ${i + 1}"><button class="x" aria-label="Hatayein">×</button></div><select id="tf-${i}" aria-label="Chart ${i + 1} timeframe">${opts}</select>`;
-      el.querySelector("img").src = c.url;
-      el.querySelector("select").onchange = (e) => { c.tf = e.target.value; };
-      el.querySelector(".x").onclick = () => { URL.revokeObjectURL(c.url); state.charts.splice(i, 1); renderThumbs(); };
-      return el;
-    }));
-    updateGo();
-  }
-  function updateGo() { $("go").disabled = !state.sample || !state.charts.length || !!state.ctl; }
-
-  const drop = $("drop");
-  drop.onclick = () => $("file").click();
-  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
-  $("file").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
-  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("drag"); };
-  drop.ondragleave = () => drop.classList.remove("drag");
-  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("drag"); addFiles(e.dataTransfer.files); };
-  document.addEventListener("paste", (e) => {
-    const files = [...(e.clipboardData?.items || [])].filter((it) => it.kind === "file").map((it) => it.getAsFile()).filter(Boolean);
-    if (files.length) addFiles(files);
-  });
-  $("clear").onclick = () => {
-    state.charts.forEach((c) => URL.revokeObjectURL(c.url));
-    state.charts = [];
-    renderThumbs();
-  };
-
-  // ---------- risk math (done here, never by the model) ----------
-  const CONTRACTS = [["XAU", 100], ["GOLD", 100], ["XAG", 5000], ["SILVER", 5000], ["BTC", 1], ["ETH", 1],
-    ["US30", 1], ["NAS", 1], ["US100", 1], ["SPX", 1], ["US500", 1], ["GER40", 1], ["DE40", 1], ["UK100", 1], ["WTI", 1000], ["USOIL", 1000]];
-  function contractFor(sym) {
-    const s = (sym || "").toUpperCase().replace(/[\/_]/g, "");
-    if (!s) return null;
-    for (const [p, v] of CONTRACTS) if (s.startsWith(p)) return v;
-    return /^[A-Z]{6}$/.test(s) ? 100000 : null;
-  }
-  const quoteUsd = (sym) => { const s = (sym || "").toUpperCase().replace("/", ""); return /^[A-Z]{6}$/.test(s) ? s.endsWith("USD") : true; };
-  const num = (x) => (x === null || x === undefined || x === "" || isNaN(+x) ? null : +x);
-  const fmt = (x) => Math.abs(x) < 10 ? (+x.toFixed(5)).toString() : x.toLocaleString("en-US", { maximumFractionDigits: 2 });
-
-  function sizeLeg(leg, bal, riskPct, contract) {
-    const entry = num(leg?.entry), sl = num(leg?.stop_loss);
-    const tps = (leg?.take_profits || []).map(num).filter((v) => v !== null);
-    const dir = leg?.direction;
-    if (!["long", "short"].includes(dir) || entry === null || sl === null || !tps.length) return null;
-    const errors = [];
-    if (dir === "long" && sl >= entry) errors.push("Long mein SL entry se neeche hona chahiye.");
-    if (dir === "long" && tps.some((t) => t <= entry)) errors.push("Long mein har TP entry se upar hona chahiye.");
-    if (dir === "short" && sl <= entry) errors.push("Short mein SL entry se upar hona chahiye.");
-    if (dir === "short" && tps.some((t) => t >= entry)) errors.push("Short mein har TP entry se neeche hona chahiye.");
-    const stop = Math.abs(entry - sl);
-    const riskAmt = bal * riskPct / 100;
-    const rr = stop ? tps.map((t) => Math.abs(t - entry) / stop) : [];
-    const lots = stop && contract ? Math.floor((riskAmt / stop / contract) * 100 + 1e-9) / 100 : null;
-    return { dir, entry, sl, tps, rr, stop, riskAmt, lots, units: stop ? riskAmt / stop : 0, errors };
-  }
-
-  // ---------- prompt ----------
-  const RULES = `Tum ek senior Smart Money Concepts (SMC) / ICT price-action trader ho. Trader ne EK HI instrument ke alag alag timeframes ki chart screenshots bheji hain. Koi indicator use nahi hota: sirf candles aur price axis se pure price action parho.
-
-Kaam: har chart dhyan se parho, top-down picture banao, phir batao agla probable move kya hai aur trade plan do — ya saaf kaho ke abhi valid trade nahi hai. "No trade" bhi sahi jawab hai; kabhi zabardasti setup na banao.
+Tumhara kaam: top-down analysis kar ke HAMESHA ek concrete trade plan do \u2014 direction (long ya short), exact key level, entry kis scenario par (retest, breakout ya liquidity sweep reversal), SL, TPs, trade kitni der ke liye hai aur kab tak hold karni hai. "Trade mat lo" kabhi final jawab nahi. Agar setup kamzor hai to bhi best available plan do, lekin grade C do aur saaf likho kis confirmation ka wait karna zaroori hai. Plan aksar conditional hoga: "Agar price X level ko retest kare aur 1m par CHoCH de to short, SL Y".
 
 Screenshots parhne ke usool:
-- Har image ka timeframe neeche list mein diya hai; agar "unknown" ho to chart ke top-left se parho, na mile to batao.
+- Har image ka timeframe neeche list mein diya hai; "unknown" ho to chart ke top-left se parho.
 - Price levels SIRF price axis / labels se parho. Jo level saaf na parha jaye us ke saath "(approx)" likho. Jo precision nazar nahi aa rahi woh invent na karo.
 - Instrument na diya ho to chart header se parho.
-- Koi zaroori timeframe missing ho (HTF ya 1m/5m) to batao aur confidence kam rakho.
 
-Confluence checklist (isi tarteeb se):
-1. Market Structure (D/4H/1H): HH/HL ya LH/LL ya range; BOS (body close se swing break); CHoCH (trend ke baad pehla opposite break).
-2. Liquidity: EQH/EQL, trendline liquidity, Asia high/low, previous day high/low ka sweep (wick se le kar andar close)? Inducement (IDM)? Agli resting liquidity (draw on liquidity) kahan hai?
-3. POIs: valid Order Block (displacement se pehle ki last opposite candle, sweep ke baad, imbalance ke saath); FVG (mitigated/unmitigated); Supply/Demand zones; Breaker/Mitigation blocks.
-4. Key levels: Daily/Weekly high-low, session highs/lows. Current dealing range ka Fib: buy sirf DISCOUNT (0.5 se neeche), sell sirf PREMIUM (0.5 se upar). Range high, range low aur 0.5 level batao.
-5. LTF confirmation (15m/5m/1m): HTF POI tap ke baad LTF CHoCH/BOS, rejection wick, engulfing, displacement. Agar abhi confirmation nahi hua to exact condition batao jis ka wait karna hai. London/NY killzone ko tarjeeh do, off-session setup flag karo.
-6. Risk: SL sweep wick / OB extreme ke peeche (structural, fixed pips nahi). TP: unmitigated FVG, opposite liquidity, swing points. Final target par kam az kam 1:3 RR; structure 1:3 na de to trade valid nahi.
+Analysis ki tarteeb (har step ka nateeja agle step mein use karo):
+1. TREND (sab se pehle \u2014 trend is your friend): Daily/4H/1H par HH/HL (uptrend) ya LH/LL (downtrend) ya range. Main trade HAMESHA HTF trend ki direction mein ho. Counter-trend trade sirf tab jab major HTF level par wazeh CHoCH ho chuka ho \u2014 aur us ko grade C aur "counter-trend" likho.
+2. STRUCTURE: har timeframe par last BOS (body close se swing break) aur CHoCH (trend ke baad pehla opposite break) price ke saath.
+3. LIQUIDITY: EQH/EQL, trendline liquidity, Asia high/low, previous day high/low. Kaunsi liquidity sweep ho chuki (wick se le kar andar close) aur kaunsi abhi baqi hai (price ka agla magnet / draw on liquidity)? Inducement (IDM) kahan hai?
+4. LEVELS / ZONES: strong support/resistance (jahan price ne kai dafa react kiya), supply/demand zones (jahan se sharp rally/drop hui), valid Order Block, FVG (mitigated ya unmitigated), breaker block. Har ek ki price range do. Sab se strong EK key level chuno jahan se trade banti hai \u2014 multiple timeframes ka confluence wala level sab se acha hai.
+5. PREMIUM/DISCOUNT: current dealing range ka high, low aur 0.5. Long sirf discount (0.5 se neeche) se, short sirf premium (0.5 se upar) se.
+6. BREAKOUT CHECK \u2014 real ya fake (yeh bohat zaroori hai, key level par lagao):
+   REAL breakout ki nishaniyan: entry timeframe par candle BODY level ke bahar close kare; displacement (bari, full-body candle) ho aur peeche FVG chhore; breakout ke baad retest par level hold kare (purana resistance ab support ya ulta); HTF trend ki direction mein ho; London/NY killzone mein ho.
+   FAKE breakout (liquidity grab / stop hunt) ki nishaniyan: sirf wick level ke bahar jaye aur candle wapas andar close ho; breakout ke foran baad tez reversal; koi FVG/displacement nahi; breakout seedha HTF supply/demand ya OB ke andar ho jaye; trend ke khilaf ho; off-session / Asia mein ho; equal highs/lows ke bilkul upar/neeche hi ruk jaye.
+   Batao abhi key level par kya ho raha hai: real_breakout, fake_breakout, retesting, ya no_breakout_yet \u2014 aur kis nishani se.
+7. ENTRY (LTF 15m/5m/1m): setup type chuno:
+   - retest: level toota (real breakout) \u2192 price wapas level par aaye \u2192 1m/5m par rejection ya CHoCH \u2192 entry.
+   - breakout: strong displacement ke saath body close \u2192 pehli chhoti pullback (FVG) par entry.
+   - liquidity_sweep_reversal: fake breakout / sweep \u2192 wapas range mein close \u2192 LTF CHoCH \u2192 entry opposite direction mein.
+   Entry trigger exact likho (kis timeframe par kya candle/CHoCH, kis price ke upar/neeche).
+8. RISK: SL structural \u2014 sweep wick ya OB/zone ke doosri taraf thora buffer ke saath (fixed pips nahi). TP1 = pehli opposite liquidity/FVG, TP2 = agli major liquidity/HTF level. Final TP par kam az kam 1:3 RR ki koshish karo; na ban sake to grade kam karo aur likho.
+9. TRADE MANAGEMENT \u2014 trade kitni der rakhni hai (bohat zaroori: achi trade zyada der hold karne se SL hit na ho):
+   - hold_time: realistic waqt (scalp aam tor par 15 min se 2-3 ghante, intraday aaj ke session tak, swing 1-5 din).
+   - time stop: agar itne waqt/candles mein TP1 tak na pohnche to trade band ya SL entry par.
+   - breakeven: kab SL entry par shift karna hai (masalan TP1 hit ya 1:1.5 par).
+   - partial: TP1 par kitna % profit book karna hai.
+   - trailing: baqi position ka SL kis swing ke peeche trail karna hai (kaunsa timeframe).
+   - exit early: kin halaat mein foran nikalna hai (entry timeframe par opposite CHoCH, session close, high-impact news, Friday close).
 
-Do trades:
-- Choti trade (scalp/intraday): HTF bias + HTF POI, entry 1m (ya 5m) par refine.
-- Bari trade (swing): 4H/1H structure aur POIs se, ghanton se dinon tak.
-Dono alag alag "none" ho sakti hain. Dono HTF bias ke saath honi chahiyein, siwaye is ke ke tum major HTF level se counter-trend scalp ki wazeh wajah do.
+Do plans do, dono HAMESHA long ya short:
+- Choti trade: entry 1m (ya 5m) par refine, scalp/intraday.
+- Bari trade: 4H/1H structure se swing.
+Saath mein alternate scenario: agar key level ulta toot jaye (real breakout doosri taraf) to plan kya ho.
 
 Jawab ka format:
-Roman Urdu mein likho (jaise Pakistani traders chat karte hain), trading terms English mein (BOS, CHoCH, FVG, OB, liquidity sweep, premium/discount, SL, TP, RR). Har section "## " se shuru karo, points "- " se. Tables na banao. Real price levels likho, generic theory nahi. Lot size ya paise calculate na karo — page khud karega.
+Roman Urdu mein likho (jaise Pakistani traders chat karte hain), trading terms English mein (BOS, CHoCH, FVG, OB, liquidity sweep, premium/discount, SL, TP, RR). Har section "## " se shuru karo, points "- " se. Tables na banao. Real price levels likho, generic theory nahi. Lot size ya paise calculate na karo \u2014 page khud karega.
 
 Sections bilkul yeh:
-## Agla Move (2-3 lines: price ka next probable move, kahan tak, aur kyun)
-## 1. Market Structure (D/4H/1H)
-## 2. Liquidity
-## 3. POIs (OB / FVG / Supply-Demand / Breaker)
-## 4. Key Levels aur Premium/Discount
-## 5. LTF Confirmation (15m/5m/1m)
-## 6. Session aur News
-## Choti Trade (1M entry)
-## Bari Trade (Swing)
-## Confluence Checklist (har item ✅ ya ❌, aakhir mein score jaise 7/10)
-## Invalidation
+## Agla Move (2-3 lines: next probable move, kahan tak, kyun)
+## 1. Trend (D/4H/1H)
+## 2. Structure (BOS / CHoCH)
+## 3. Liquidity
+## 4. Key Levels aur Zones (S/R, Supply/Demand, OB, FVG)
+## 5. Premium / Discount
+## 6. Breakout Check (real ya fake)
+## 7. Choti Trade (1M entry)
+## 8. Bari Trade (Swing)
+## 9. Trade Management (kitni der, BE, partial, trailing, exit)
+## 10. Agar Plan Fail Ho (alternate scenario)
+## Confluence Checklist (har item \u2705 ya \u274C, score jaise 7/10, aur grade)
 
-Aakhir mein, sirf ek dafa, yeh machine-readable block:
+Aakhir mein, sirf ek dafa, yeh machine-readable block (example values hain, apne chart ke real levels likho):
 <trade_json>
-{"symbol": "XAUUSD", "current_price": 2345.6, "htf_bias": "bullish",
- "next_move": {"direction": "up", "target": 2360.0, "summary": "Asia low sweep ke baad 1H FVG se buyside liquidity 2360 ki taraf"},
- "scalp": {"direction": "long", "entry": 2340.0, "stop_loss": 2336.5, "take_profits": [2348.0, 2352.0], "entry_type": "confirmation", "trigger": "4H OB tap ke baad 1m CHoCH 2341 ke upar", "confidence": 65},
- "swing": {"direction": "none", "entry": null, "stop_loss": null, "take_profits": [], "entry_type": null, "trigger": null, "confidence": 0}}
+{"symbol": "XAUUSD", "current_price": 2351.4, "htf_trend": "bearish",
+ "next_move": {"direction": "down", "target": 2338.0, "summary": "1H EQH 2356 sweep ho chuki, 15m CHoCH neeche \u2014 1H FVG 2338 ki taraf"},
+ "key_level": {"price": 2354.0, "type": "supply", "breakout_status": "fake_breakout", "why": "2356 ke upar sirf wick, 15m candle wapas andar close, koi FVG nahi"},
+ "scalp": {"direction": "short", "grade": "A", "setup": "liquidity_sweep_reversal", "entry": 2353.0, "stop_loss": 2356.8, "take_profits": [2345.0, 2338.0],
+           "entry_type": "confirmation", "trigger": "15m FVG 2352-2354 tap ke baad 1m CHoCH 2350.5 ke neeche", "hold_time": "30 min - 2 ghante",
+           "management": {"breakeven": "TP1 (2345) hit hote hi SL entry par", "partial": "TP1 par 50% close", "trail": "baqi ka SL 5m swing high ke upar", "time_stop": "2 ghante mein TP1 na aaye to close", "exit_early": "5m par bullish CHoCH 2355 ke upar ya NY session close"},
+           "confidence": 65},
+ "swing": {"direction": "short", "grade": "B", "setup": "retest", "entry": 2356.0, "stop_loss": 2366.0, "take_profits": [2330.0, 2312.0],
+           "entry_type": "limit", "trigger": "4H supply 2354-2360 retest", "hold_time": "1-3 din",
+           "management": {"breakeven": "1:1.5 par SL entry par", "partial": "TP1 par 50%", "trail": "1H swing highs ke upar", "time_stop": "3 din mein TP1 na aaye to band", "exit_early": "4H body close 2366 ke upar"},
+           "confidence": 55},
+ "alternate": {"if": "15m body close 2357 ke upar aur retest hold kare (real breakout)", "then": "short cancel; 2357 retest par long, SL 2351, TP 2370"},
+ "chart_map": {"image": 3, "axis": [{"price": 2350.0, "y": 0.42}, {"price": 2340.0, "y": 0.71}]}}
 </trade_json>
-JSON ke usool: sirf valid JSON; direction "long", "short" ya "none"; next_move.direction "up", "down" ya "sideways"; numbers bina comma; entry_type "limit" ya "confirmation" ya null; confidence 0-100, imaandari se (80 se upar kam hi).`;
-
-  function buildPrompt(charts) {
-    const s = sessionInfo();
-    const list = charts.map((c, i) => `Image ${i + 1}: timeframe ${c.tf || "unknown"}`).join("\n");
-    const session = s.closed ? "Forex market BAND hai (weekend)." :
-      `Active: ${s.active.join(", ") || "koi major session/killzone nahi (off-session)"}. Killzone ke andar: ${s.kz ? "HAAN" : "NAHI"}.`;
-    return `${RULES}
-
----
-Is analysis ka data:
-Instrument: ${$("pair").value.trim() || "nahi diya — chart se parho"}
-Account: balance ${$("balance").value}, risk ${$("risk").value}% per trade
-Abhi ka waqt (page ne compute kiya, chart ke clock se zyada bharosa isi par): ${s.utc} UTC, New York ${s.ny} (${s.wd}). ${session}
-News: page news check nahi kar sakta — trader ko yaad dilao ke Forex Factory par red-folder news khud dekhe.
-Trader ke notes: ${$("notes").value.trim() || "koi nahi"}
+JSON ke usool: sirf valid JSON; direction "long" ya "short" (kabhi "none" nahi); next_move.direction "up", "down" ya "sideways"; grade "A+", "A", "B" ya "C"; setup "retest", "breakout" ya "liquidity_sweep_reversal"; breakout_status "real_breakout", "fake_breakout", "retesting" ya "no_breakout_yet"; numbers bina comma; entry_type "limit" (level par pending order) ya "confirmation" (trigger ke baad market entry); confidence 0-100 imaandari se.
+chart_map: woh image number (1 se shuru, neeche wali list ke hisaab se) jis par choti trade ki entry sab se saaf dikhti hai (aam tor par 5m ya 15m). "axis" mein us image ke price scale ke DO labels jo ek doosre se door hon: label ki price, aur "y" = image ke top se us label ki height ka fraction (0 = top, 1 = bottom). Yeh page us chart par entry/SL/TP lines draw karne ke liye use karta hai, is liye labels dhyan se parho.`;function V({pair:a,balance:e,risk:r,notes:p,session:s,charts:o}){let l=s.closed?"Forex market BAND hai (weekend).":`Active: ${s.active.join(", ")||"koi major session/killzone nahi (off-session)"}. Killzone ke andar: ${s.kz?"HAAN":"NAHI"}.`,u=o.map((y,h)=>`Image ${h+1}: timeframe ${y.tf||"unknown"}`).join(`
+`);return`Is analysis ka data:
+Instrument: ${a||"nahi diya \u2014 chart se parho"}
+Account: balance ${e}, risk ${r}% per trade
+Abhi ka waqt (page ne compute kiya, chart ke clock se zyada bharosa isi par): ${s.utc} UTC, New York ${s.ny} (${s.wd}). ${l}
+News: page news check nahi karta \u2014 trade management mein trader ko yaad dilao ke Forex Factory par red-folder news dekhe.
+Trader ke notes: ${p||"koi nahi"}
 
 Images (isi tarteeb mein attach hain, bade timeframe pehle):
-${list}`;
-  }
+${u}`}var n=a=>document.getElementById(a),F=["1W","1D","4H","2H","1H","30m","15m","5m","3m","1m"],Y={get(a,e=null){try{let r=localStorage.getItem(a);return r===null?e:JSON.parse(r)}catch{return e}},set(a,e){try{localStorage.setItem(a,JSON.stringify(e))}catch{}},del(a){try{localStorage.removeItem(a)}catch{}}};function Q(a){let e=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(a).map(r=>[r.type,r.value]));return{wd:e.weekday,h:+e.hour,m:+e.minute}}function N(a=new Date){let{wd:e,h:r,m:p}=Q(a),s=r+p/60,o=e==="Sat"||e==="Fri"&&s>=17||e==="Sun"&&s<17,l=[];return s>=20&&l.push("Asia Session"),s>=2&&s<5&&l.push("London Killzone"),s>=7&&s<10&&l.push("New York Killzone"),s>=10&&s<12&&l.push("London Close"),{closed:o,active:o?[]:l,kz:!o&&l.some(u=>u.includes("Killzone")),utc:a.toISOString().slice(0,16).replace("T"," "),ny:`${String(r).padStart(2,"0")}:${String(p).padStart(2,"0")}`,wd:e}}function Z(a){let e=" "+a.toLowerCase().replace(/[_\-.]/g," ")+" ",r;return(r=e.match(/\b(1|3|5|15|30)\s*(m|min|mins|minute)\b/))||(r=e.match(/\bm(1|3|5|15|30)\b/))?r[1]+"m":(r=e.match(/\b(1|2|4)\s*(h|hr|hour)\b/))||(r=e.match(/\bh(1|4)\b/))?r[1]+"H":/\b1?\s*(d|day|daily)\b/.test(e)?"1D":/\b1?\s*(w|week|weekly)\b/.test(e)?"1W":""}var ee=[["XAU",100],["GOLD",100],["XAG",5e3],["SILVER",5e3],["BTC",1],["ETH",1],["US30",1],["NAS",1],["US100",1],["SPX",1],["US500",1],["GER40",1],["DE40",1],["UK100",1],["WTI",1e3],["USOIL",1e3]];function ae(a){let e=(a||"").toUpperCase().replace(/[\/_]/g,"");if(!e)return null;for(let[r,p]of ee)if(e.startsWith(r))return p;return/^[A-Z]{6}$/.test(e)?1e5:null}var te=a=>{let e=(a||"").toUpperCase().replace("/","");return/^[A-Z]{6}$/.test(e)?e.endsWith("USD"):!0},v=a=>a==null||a===""||isNaN(+a)?null:+a,x=a=>Math.abs(a)<10?(+a.toFixed(5)).toString():a.toLocaleString("en-US",{maximumFractionDigits:2});function re(a,e,r,p){let s=v(a?.entry),o=v(a?.stop_loss),l=(a?.take_profits||[]).map(v).filter(c=>c!==null),u=a?.direction;if(!["long","short"].includes(u)||s===null||o===null||!l.length)return null;let y=[];u==="long"&&o>=s&&y.push("Long mein SL entry se neeche hona chahiye."),u==="long"&&l.some(c=>c<=s)&&y.push("Long mein har TP entry se upar hona chahiye."),u==="short"&&o<=s&&y.push("Short mein SL entry se upar hona chahiye."),u==="short"&&l.some(c=>c>=s)&&y.push("Short mein har TP entry se neeche hona chahiye.");let h=Math.abs(s-o),t=e*r/100,d=h?l.map(c=>Math.abs(c-s)/h):[],i=h&&p?Math.floor(t/h/p*100+1e-9)/100:null;return{dir:u,entry:s,sl:o,tps:l,rr:d,stop:h,riskAmt:t,lots:i,units:h?t/h:0,errors:y}}function ne(a){let e=a.match(/<trade_json>\s*([\s\S]*?)\s*<\/trade_json>/);if(!e)return null;try{return JSON.parse(e[1].replace(/^```(json)?|```$/g,"").trim())}catch{return null}}var b=a=>String(a).replace(/[&<>"]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[e]),M=a=>b(a).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");function I(a){let e=a.split("<trade_json>")[0].trim(),r=[],p=!1;for(let s of e.split(`
+`)){let o=s.trim();if(/^[-*]\s+/.test(o)){p||(r.push("<ul>"),p=!0),r.push(`<li>${M(o.replace(/^[-*]\s+/,""))}</li>`);continue}p&&(r.push("</ul>"),p=!1),/^#{1,4}\s+/.test(o)?r.push(`<h3>${M(o.replace(/^#+\s+/,""))}</h3>`):o&&r.push(`<p>${M(o)}</p>`)}p&&r.push("</ul>"),n("reportBody").innerHTML=r.join(""),n("report").hidden=!e}var ie={retest:"Retest entry",breakout:"Breakout entry",liquidity_sweep_reversal:"Liquidity sweep reversal"},se={real_breakout:["Real breakout","bull"],fake_breakout:["Fake breakout (liquidity grab)","bear"],retesting:["Level retest ho raha hai","warn"],no_breakout_yet:["Abhi breakout nahi hua","muted"]},oe=[["breakeven","Breakeven"],["partial","Partial profit"],["trail","Trailing SL"],["time_stop","Time stop"],["exit_early","Foran exit"]];function le(a,e,r,p,s){let o=document.createElement("article");o.className="card";let l=r?.dir||(["long","short"].includes(e?.direction)?e.direction:"none"),u=l==="long"?"LONG":l==="short"?"SHORT":"\u2014",y=e?.grade?`<span class="grade g-${b(String(e.grade).replace("+","p"))}" title="Setup quality">${b(e.grade)}</span>`:"",h="";if(!r)h='<p class="muted">Levels parse nahi ho sake \u2014 neeche poori analysis dekhein.</p>';else{let t=[`<tr><td>Entry${e.entry_type?` <span class="muted">\xB7 ${e.entry_type==="limit"?"pending order":"confirmation ke baad"}</span>`:""}</td><td>${x(r.entry)}</td><td></td></tr>`,`<tr class="sl"><td>Stop loss</td><td>${x(r.sl)}</td><td></td></tr>`,...r.tps.map((f,g)=>`<tr class="tp"><td>TP${g+1}</td><td>${x(f)}</td><td>1:${r.rr[g]?r.rr[g].toFixed(1):"\u2014"}</td></tr>`)].join(""),d=r.lots===null?`${r.units.toFixed(4)} units`:r.lots<.01?"0.01 bhi zyada risk":`${r.lots.toFixed(2)} lots${te(s)?"":" (approx)"}`,i=Math.max(0,Math.min(100,v(e.confidence)??0)),c=e.management||{},m=oe.filter(([f])=>c[f]).map(([f,g])=>`<li><b>${g}:</b> ${b(c[f])}</li>`).join("");h=`
+      ${e.setup?`<div class="setup">${b(ie[e.setup]||e.setup)}</div>`:""}
+      ${e.trigger?`<p class="trigger"><b>Entry kab:</b> ${b(e.trigger)}</p>`:""}
+      <table class="lv">${t}</table>
+      <dl class="kv"><dt>Risk</dt><dd>$${r.riskAmt.toFixed(2)} (${p}%)</dd>
+      <dt>Position</dt><dd>${d}</dd>
+      <dt>Kitni der</dt><dd>${b(e.hold_time||"\u2014")}</dd>
+      <dt>Confidence</dt><dd>${i}%</dd></dl>
+      <div class="conf" aria-hidden="true"><i style="width:${i}%"></i></div>
+      ${m?`<div class="mgmt"><div class="label">Trade management</div><ul>${m}</ul></div>`:""}`}return o.innerHTML=`<div class="card-head"><h3>${a}</h3><span class="tags">${y}<span class="pill ${l}">${u}</span></span></div>${h}`,o}function ce(a,e,r){let p=n("map");p.replaceChildren();let s=a?.chart_map,o=v(s?.image),l=s?.axis;if(!r||o===null||!e[o-1]||!Array.isArray(l)||l.length<2)return;let[u,y,h,t]=[v(l[0].price),v(l[0].y),v(l[1].price),v(l[1].y)];if([u,y,h,t].includes(null)||u===h)return;let d=c=>y+(c-u)*(t-y)/(h-u),i=new Image;i.onload=()=>{let c=Math.min(1,1400/i.naturalWidth),m=Math.round(i.naturalWidth*c),f=Math.round(i.naturalHeight*c),g=document.createElement("canvas");g.width=m,g.height=f;let k=g.getContext("2d");k.drawImage(i,0,0,m,f);let $=getComputedStyle(document.documentElement),T=L=>$.getPropertyValue(L).trim(),w=[["ENTRY",r.entry,"#3b6cf6"],["SL",r.sl,"#e5484d"],...r.tps.map((L,j)=>[`TP${j+1}`,L,"#12a26b"])],H=v(a.key_level?.price);H!==null&&w.push(["KEY",H,"#d4920a",!0]);let C=Math.max(12,Math.round(m/70));k.font=`600 ${C}px ${T("--f-mono")||"monospace"}`;let q=0,B=[];for(let[L,j,z,X]of w){let S=d(j)*f;if(!(S>-2&&S<f+2))continue;q++,k.strokeStyle=z,k.lineWidth=Math.max(2,m/600),k.setLineDash(X?[10,6]:[]),k.beginPath(),k.moveTo(0,S),k.lineTo(m,S),k.stroke();let D=`${L} ${x(j)}`,G=k.measureText(D).width+12,A=8;for(let P of B)Math.abs(P.y-S)<C+8&&(A=Math.max(A,P.x+P.w+6));B.push({x:A,y:S,w:G}),k.fillStyle=z,k.fillRect(A,S-C-6,G,C+8),k.fillStyle="#fff",k.fillText(D,A+6,S-7)}if(!q)return;let E=document.createElement("figure");E.className="map",E.append(g);let O=document.createElement("figcaption");O.textContent=`Trade map \xB7 ${e[o-1].tf||"chart "+o} \xB7 lines takreeban jagah par hain \u2014 price scale se mila kar dekhein.`,E.append(O),p.append(E)},i.src=e[o-1].url}function J(a,e=[]){let r=n("pair").value.trim()||a?.symbol||"",p=+n("balance").value||0,s=+n("risk").value||0,o=v(n("contract").value)||ae(r),l=a?.next_move||{},u=l.direction==="up"?"up":l.direction==="down"?"down":"side",y=l.direction==="up"?"Upar (Bullish)":l.direction==="down"?"Neeche (Bearish)":"Sideways",h=a?.htf_trend?`HTF trend: ${b(a.htf_trend)}`:"";n("move").innerHTML=a?`<div class="move ${u}">
+      <span class="label">Agla probable move${r?" \xB7 "+b(r):""}${v(a.current_price)!==null?" \xB7 abhi "+x(+a.current_price):""}${h?" \xB7 "+h:""}</span>
+      <div class="dir">${y}${v(l.target)!==null?` \u2192 ${x(+l.target)}`:""}</div>${l.summary?`<p>${b(l.summary)}</p>`:""}</div>`:"";let t=a?.key_level,d=se[t?.breakout_status];n("keylevel").innerHTML=t&&v(t.price)!==null?`<div class="keylevel">
+      <div><span class="label">Key level${t.type?" \xB7 "+b(t.type):""}</span><div class="kl-price">${x(+t.price)}</div></div>
+      <div class="kl-body">${d?`<span class="chip st-${d[1]}">${d[0]}</span>`:""}${t.why?`<p>${b(t.why)}</p>`:""}</div></div>`:"";let i=[],c=[],m=null;for(let[k,$]of[["scalp","Choti trade \xB7 1M entry"],["swing","Bari trade \xB7 Swing"]]){let T=a?.[k],w=T?re(T,p,s,o):null;if(k==="scalp"&&(m=w),T&&c.push(le($,T,w,s,r)),!w)continue;w.errors.forEach(C=>i.push(["bad",`${$}: ${C}`])),w.rr.length&&Math.max(...w.rr)<3&&i.push(["",`${$}: final target ka RR 1:${Math.max(...w.rr).toFixed(1)} hai (1:3 se kam) \u2014 position chhoti rakhein ya TP2 tak hold karein.`]);let H=(a.htf_trend||"").toLowerCase();(H==="bullish"&&w.dir==="short"||H==="bearish"&&w.dir==="long")&&i.push(["bad",`${$}: HTF trend ke khilaf hai (counter-trend). Trend is your friend \u2014 size aadha rakhein ya skip karein.`]),w.lots===null&&i.push(["",`${$}: lot size ke liye "Units per lot" bharein (forex 100000, gold 100).`])}n("cards").replaceChildren(...c);let f=a?.alternate;n("alt").innerHTML=f?.if?`<div class="alt"><span class="label">Agar plan fail ho</span><p><b>Agar:</b> ${b(f.if)}</p>${f.then?`<p><b>To:</b> ${b(f.then)}</p>`:""}</div>`:"";let g=N();s>2&&i.push(["",`${s}% risk zyada hai \u2014 pro traders 1\u20132% se upar nahi jaate.`]),g.closed?i.push(["","Market abhi band hai (weekend)."]):g.kz||i.push(["","Abhi London/NY killzone nahi \u2014 breakouts zyada fake hote hain. Entry killzone mein lein."]),a&&i.push(["","Levels screenshot se parhe gaye hain \u2014 live chart par confirm karein, aur Forex Factory par news dekh lein."]),n("warns").replaceChildren(...i.map(([k,$])=>{let T=document.createElement("li");return k&&(T.className=k),T.textContent=$,T})),ce(a,e,m)}function _(a){n("errBox").textContent=a||"",n("errBox").hidden=!a}var de={symbol:"XAUUSD",current_price:2351.4,htf_trend:"bearish",next_move:{direction:"down",target:2338,summary:"1H par buyside liquidity (EQH 2356) sweep ho chuki, 15m CHoCH neeche \u2014 price 1H FVG 2338 ki taraf ja sakti hai."},key_level:{price:2354,type:"supply",breakout_status:"fake_breakout",why:"2356 ke upar sirf wick gayi, 15m candle wapas andar close hui aur koi FVG nahi bana."},scalp:{direction:"short",grade:"A",setup:"liquidity_sweep_reversal",entry:2353,stop_loss:2356.8,take_profits:[2345,2338],entry_type:"confirmation",trigger:"15m FVG 2352\u20132354 tap ke baad 1m CHoCH 2350.5 ke neeche",hold_time:"30 min \u2013 2 ghante",management:{breakeven:"TP1 (2345) hit hote hi SL entry par",partial:"TP1 par 50% close",trail:"baqi ka SL 5m swing high ke upar",time_stop:"2 ghante mein TP1 na aaye to close",exit_early:"5m bullish CHoCH 2355 ke upar"},confidence:65},swing:{direction:"short",grade:"B",setup:"retest",entry:2356,stop_loss:2366,take_profits:[2330,2312],entry_type:"limit",trigger:"4H supply 2354\u20132360 ka retest",hold_time:"1\u20133 din",management:{breakeven:"1:1.5 par SL entry par",partial:"TP1 par 50%",trail:"1H swing highs ke upar",time_stop:"3 din mein TP1 na aaye to band",exit_early:"4H body close 2366 ke upar"},confidence:55},alternate:{if:"15m body close 2357 ke upar aur retest hold kare (real breakout)",then:"short cancel; 2357 retest par long, SL 2351, TP 2370"}};function W(a){let e={charts:[],maxImages:10,ready:!1,ctl:null,raw:""},r=["pair","balance","risk","contract"],p=Y.get("smc-settings",{});for(let t of r)p?.[t]!=null&&p[t]!==""&&(n(t).value=p[t]);let s=()=>Y.set("smc-settings",Object.fromEntries(r.map(t=>[t,n(t).value])));r.forEach(t=>n(t).addEventListener("change",s));let o=()=>{let t=N();n("clockTxt").textContent=`${t.utc} UTC \xB7 NY ${t.ny}`;let d=n("kzChip");d.className="chip "+(t.kz?"on":"off"),d.textContent=t.closed?"Market band (weekend)":t.kz?t.active.find(i=>i.includes("Killzone")):t.active[0]||"Off-session"};o(),setInterval(o,3e4);let l=()=>{n("go").disabled=!e.ready||!e.charts.length||!!e.ctl};function u(t){for(let d of t)if(d.type.startsWith("image/")){if(e.charts.length>=e.maxImages){_(`Ek dafa mein ${e.maxImages} pics tak. Sab se zaroori timeframes rakhein.`);break}e.charts.push({file:d,url:URL.createObjectURL(d),tf:Z(d.name||"")})}y()}function y(){n("thumbs").replaceChildren(...e.charts.map((t,d)=>{let i=document.createElement("div");i.className="thumb";let c=['<option value="">Timeframe?</option>',...F.map(m=>`<option${m===t.tf?" selected":""}>${m}</option>`)].join("");return i.innerHTML=`<div class="img"><img alt="Chart ${d+1}"><button class="x" aria-label="Hatayein">\xD7</button></div><select id="tf-${d}" aria-label="Chart ${d+1} timeframe">${c}</select>`,i.querySelector("img").src=t.url,i.querySelector("select").onchange=m=>{t.tf=m.target.value},i.querySelector(".x").onclick=()=>{URL.revokeObjectURL(t.url),e.charts.splice(d,1),y()},i})),l()}let h=n("drop");return h.onclick=()=>n("file").click(),h.onkeydown=t=>{(t.key==="Enter"||t.key===" ")&&(t.preventDefault(),n("file").click())},n("file").onchange=t=>{u(t.target.files),t.target.value=""},h.ondragover=t=>{t.preventDefault(),h.classList.add("drag")},h.ondragleave=()=>h.classList.remove("drag"),h.ondrop=t=>{t.preventDefault(),h.classList.remove("drag"),u(t.dataTransfer.files)},document.addEventListener("paste",t=>{if(t.target.closest?.("input, textarea"))return;let d=[...t.clipboardData?.items||[]].filter(i=>i.kind==="file").map(i=>i.getAsFile()).filter(Boolean);d.length&&u(d)}),n("clear").onclick=()=>{e.charts.forEach(t=>URL.revokeObjectURL(t.url)),e.charts=[],y()},J(de),n("go").onclick=async()=>{if(!e.ready||!e.charts.length)return;let t=[...e.charts].sort((c,m)=>(c.tf?F.indexOf(c.tf):99)-(m.tf?F.indexOf(m.tf):99)),d=new AbortController;e.ctl=d,l(),n("stop").hidden=!1,_(""),n("exampleTag").hidden=!0;for(let c of["move","keylevel","alt","map"])n(c).replaceChildren();n("cards").replaceChildren(),n("warns").replaceChildren(),n("report").hidden=!0,n("reportBody").innerHTML="",n("status").hidden=!1,n("statusTxt").textContent=`${t.length} charts parhe ja rahe hain\u2026 pehla jawab aane mein 30\u201390 second lag sakte hain.`,e.raw="";let i=V({pair:n("pair").value.trim(),balance:n("balance").value,risk:n("risk").value,notes:n("notes").value.trim(),session:N(),charts:t});try{let{text:c,truncated:m}=await a.analyze({rules:K,context:i,charts:t,signal:d.signal,onText:g=>{e.raw=g,n("statusTxt").textContent="Analysis likhi ja rahi hai\u2026",I(g)}});e.raw=c,I(c);let f=ne(c);J(f,t),f||_("Trade levels parse nahi ho sake \u2014 neeche poori analysis parhein aur lot size khud nikaalein."),m&&_("Jawab lamba ho kar kat gaya \u2014 kam pics ke saath dobara try karein.")}catch(c){c?.keepText&&e.raw?I(e.raw):c?.keepText||(n("reportBody").innerHTML=""),c?.cancelled||_(c?.userMessage||"Connection ya service ka masla aaya. Dobara 'Analyse karein' dabayein.")}finally{e.ctl=null,n("status").hidden=!0,n("stop").hidden=!0,l()}},n("stop").onclick=()=>e.ctl?.abort(),n("copy").onclick=async()=>{let t=e.raw.split("<trade_json>")[0].trim();try{await navigator.clipboard.writeText(t),n("copy").textContent="Copied"}catch{let d=document.createRange();d.selectNodeContents(n("reportBody"));let i=getSelection();i.removeAllRanges(),i.addRange(d),n("copy").textContent="Select ho gaya"}setTimeout(()=>n("copy").textContent="Copy",1500)},{setReady(t,{maxImages:d,accept:i,note:c}={}){e.ready=t,d&&(e.maxImages=d),i&&(n("file").accept=i),n("limitTxt").textContent=`Ek analysis mein ${e.maxImages} pics tak`,c!==void 0&&_(c),l()},showError:_}}var he={not_granted:"Is page ko Claude use karne ki ijazat nahi mili. Page ke Permissions menu se allow karein.",sampling_disabled:"Aap ke account par yeh feature available nahi.",images_unavailable:"Is view mein images nahi bheji ja saktein. Page ko claude.ai par browser mein kholein.",image_rejected:"Koi image qabool nahi hui (type ya size). PNG/JPG screenshot dobara daalein.",rate_limited:"Abhi bohat zyada requests ho gayi hain ya usage limit poori. Thori der baad try karein.",session_expired:"Dobara sign in karein.",refused:"Claude ne yeh request decline kar di. Notes badal kar dobara try karein.",empty_completion:"Jawab khali aaya. Kam pics ke saath dobara try karein.",prompt_too_large:"Request bohat bari hai. Notes chhote karein."},R=null,U=W({async analyze({rules:a,context:e,charts:r,signal:p,onText:s}){try{return await R(`${a}
 
-  // ---------- rendering ----------
-  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  function renderReport(text) {
-    const visible = text.split("<trade_json>")[0].trim();
-    const html = [];
-    let inList = false;
-    for (const line of visible.split("\n")) {
-      const l = line.trim();
-      const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-      if (/^-\s+/.test(l)) { if (!inList) { html.push("<ul>"); inList = true; } html.push(`<li>${inline(l.replace(/^-\s+/, ""))}</li>`); continue; }
-      if (inList) { html.push("</ul>"); inList = false; }
-      if (/^#{1,4}\s+/.test(l)) html.push(`<h3>${inline(l.replace(/^#+\s+/, ""))}</h3>`);
-      else if (l) html.push(`<p>${inline(l)}</p>`);
-    }
-    if (inList) html.push("</ul>");
-    $("reportBody").innerHTML = html.join("");
-    $("report").hidden = !visible;
-  }
-
-  function parseTrade(text) {
-    const m = text.match(/<trade_json>\s*([\s\S]*?)\s*<\/trade_json>/);
-    if (!m) return null;
-    try { return JSON.parse(m[1].replace(/^```(json)?|```$/g, "").trim()); } catch { return null; }
-  }
-
-  function legCard(title, leg, sized, bal, riskPct, contract, sym) {
-    const card = document.createElement("article");
-    card.className = "card";
-    const dir = sized ? sized.dir : "none";
-    const pill = dir === "long" ? "LONG" : dir === "short" ? "SHORT" : "NO TRADE";
-    let body = "";
-    if (!sized) {
-      body = `<p class="trigger">${esc(leg?.trigger || "Abhi valid setup nahi — confluence poora hone ka wait karein.")}</p>`;
-    } else {
-      const rows = [`<tr><td>Entry${leg.entry_type ? ` · ${esc(String(leg.entry_type))}` : ""}</td><td>${fmt(sized.entry)}</td><td></td></tr>`,
-        `<tr class="sl"><td>Stop loss</td><td>${fmt(sized.sl)}</td><td></td></tr>`,
-        ...sized.tps.map((t, i) => `<tr class="tp"><td>TP${i + 1}</td><td>${fmt(t)}</td><td>1:${sized.rr[i] ? sized.rr[i].toFixed(1) : "—"}</td></tr>`)].join("");
-      const lotTxt = sized.lots === null ? `${sized.units.toFixed(4)} units` :
-        sized.lots < 0.01 ? "0.01 bhi zyada risk" : `${sized.lots.toFixed(2)} lots${quoteUsd(sym) ? "" : " (approx)"}`;
-      const conf = Math.max(0, Math.min(100, num(leg.confidence) ?? 0));
-      body = `<table class="lv">${rows}</table>
-        <dl class="kv"><dt>Risk</dt><dd>$${sized.riskAmt.toFixed(2)} (${riskPct}%)</dd>
-        <dt>SL distance</dt><dd>${fmt(sized.stop)}</dd>
-        <dt>Position</dt><dd>${lotTxt}</dd>
-        <dt>Confidence</dt><dd>${conf}%</dd></dl>
-        <div class="conf" aria-hidden="true"><i style="width:${conf}%"></i></div>
-        ${leg.trigger ? `<p class="trigger"><strong>Trigger:</strong> ${esc(String(leg.trigger))}</p>` : ""}`;
-    }
-    card.innerHTML = `<div class="card-head"><h3>${title}</h3><span class="pill ${dir}">${pill}</span></div>${body}`;
-    return card;
-  }
-
-  function renderTrade(trade) {
-    const sym = $("pair").value.trim() || trade?.symbol || "";
-    const bal = +$("balance").value || 0, riskPct = +$("risk").value || 0;
-    const contract = num($("contract").value) || contractFor(sym);
-    const nm = trade?.next_move || {};
-    const cls = nm.direction === "up" ? "up" : nm.direction === "down" ? "down" : "side";
-    const word = nm.direction === "up" ? "Upar (Bullish)" : nm.direction === "down" ? "Neeche (Bearish)" : "Sideways / Wait";
-    $("move").innerHTML = trade ? `<div class="move ${cls}"><span class="label">Agla probable move${sym ? " · " + esc(sym) : ""}${trade.current_price ? " · abhi " + fmt(+trade.current_price) : ""}</span>
-      <div class="dir">${word}${num(nm.target) !== null ? ` → ${fmt(+nm.target)}` : ""}</div>${nm.summary ? `<p>${esc(String(nm.summary))}</p>` : ""}</div>` : "";
-
-    const warns = [];
-    const cards = [];
-    for (const [key, title] of [["scalp", "Choti trade · 1M entry"], ["swing", "Bari trade · Swing"]]) {
-      const leg = trade?.[key];
-      const sized = leg ? sizeLeg(leg, bal, riskPct, contract) : null;
-      cards.push(legCard(title, leg, sized, bal, riskPct, contract, sym));
-      if (sized) {
-        sized.errors.forEach((e) => warns.push(["bad", `${title}: ${e}`]));
-        if (sized.rr.length && Math.max(...sized.rr) < 3) warns.push(["bad", `${title}: final target 1:3 se kam hai — checklist ke hisaab se skip karein.`]);
-        if (sized.lots === null) warns.push(["", `${title}: lot size ke liye "Units per lot" bharein (forex 100000, gold 100).`]);
-      }
-    }
-    $("cards").replaceChildren(...(trade ? cards : []));
-    const s = sessionInfo();
-    if (riskPct > 2) warns.push(["", `${riskPct}% risk zyada hai — pro traders 1–2% se upar nahi jaate.`]);
-    if (s.closed) warns.push(["", "Market abhi band hai (weekend)."]);
-    else if (!s.kz) warns.push(["", "Abhi London/NY killzone nahi — off-session entry avoid karein ya killzone ka wait karein."]);
-    if (trade) warns.push(["", "Levels screenshot se parhe gaye hain — live chart par confirm karein, aur Forex Factory par news dekh lein."]);
-    $("warns").replaceChildren(...warns.map(([c, t]) => { const li = document.createElement("li"); if (c) li.className = c; li.textContent = t; return li; }));
-  }
-
-  function showError(msg) { $("errBox").textContent = msg; $("errBox").hidden = !msg; }
-  const ERR = {
-    not_granted: "Is page ko Claude use karne ki ijazat nahi mili. Page ke Permissions menu se allow karein.",
-    sampling_disabled: "Aap ke account par yeh feature available nahi.",
-    images_unavailable: "Is view mein images nahi bheji ja saktein. Page ko claude.ai par browser mein kholein.",
-    image_rejected: "Koi image qabool nahi hui (type ya size). PNG/JPG screenshot dobara daalein.",
-    rate_limited: "Abhi bohat zyada requests ho gayi hain ya usage limit poori. Thori der baad try karein.",
-    session_expired: "Dobara sign in karein.",
-    refused: "Claude ne yeh request decline kar di. Notes badal kar dobara try karein.",
-    empty_completion: "Jawab khali aaya. Kam pics ke saath dobara try karein.",
-    prompt_too_large: "Request bohat bari hai. Notes chhote karein.",
-  };
-
-  // ---------- example state (first frame) ----------
-  const EXAMPLE = {
-    symbol: "XAUUSD", current_price: 2351.4,
-    next_move: { direction: "down", target: 2338.0, summary: "1H par buyside liquidity (EQH 2356) sweep ho chuki, 15m CHoCH neeche — price 1H FVG 2338 ki taraf ja sakti hai." },
-    scalp: { direction: "short", entry: 2353.0, stop_loss: 2356.8, take_profits: [2345.0, 2338.0], entry_type: "confirmation", trigger: "15m FVG 2352–2354 tap ke baad 1m CHoCH 2350.5 ke neeche", confidence: 60 },
-    swing: { direction: "none", entry: null, stop_loss: null, take_profits: [], trigger: "4H abhi range mein — 4H BOS ka wait karein" },
-  };
-  renderTrade(EXAMPLE);
-
-  // ---------- run ----------
-  $("go").onclick = async () => {
-    if (!state.sample || !state.charts.length) return;
-    const charts = [...state.charts].sort((a, b) => (TF.indexOf(a.tf) + 99 * !a.tf) - (TF.indexOf(b.tf) + 99 * !b.tf));
-    const ctl = new AbortController();
-    state.ctl = ctl;
-    updateGo();
-    $("stop").hidden = false;
-    showError("");
-    $("exampleTag").hidden = true;
-    $("move").innerHTML = ""; $("cards").replaceChildren(); $("warns").replaceChildren();
-    $("report").hidden = true; $("reportBody").innerHTML = "";
-    $("status").hidden = false;
-    $("statusTxt").textContent = `${charts.length} charts parhe ja rahe hain… pehla jawab aane mein 30–90 second lag sakte hain.`;
-    try {
-      const { text, truncated } = await state.sample(buildPrompt(charts), {
-        images: charts.map((c) => c.file),
-        modelTier: "complex",
-        cache: false,
-        signal: ctl.signal,
-        onText: ({ text }) => { state.raw = text; $("statusTxt").textContent = "Analysis likhi ja rahi hai…"; renderReport(text); },
-      });
-      state.raw = text;
-      renderReport(text);
-      const trade = parseTrade(text);
-      renderTrade(trade);
-      if (!trade) showError("Trade levels parse nahi ho sake — neeche poori analysis parhein aur lot size khud nikaalein.");
-      if (truncated) showError("Jawab lamba ho kar kat gaya — kam pics ke saath dobara try karein.");
-    } catch (e) {
-      if (e?.code === "refused") $("reportBody").innerHTML = "";
-      else if (e?.text) renderReport(e.text);
-      if (e?.code !== "cancelled") showError(ERR[e?.code] || "Connection ya service ka masla aaya. Dobara 'Analyse karein' dabayein.");
-    } finally {
-      state.ctl = null;
-      $("status").hidden = true;
-      $("stop").hidden = true;
-      updateGo();
-    }
-  };
-  $("stop").onclick = () => state.ctl?.abort();
-  $("copy").onclick = async () => {
-    const txt = state.raw.split("<trade_json>")[0].trim();
-    try { await navigator.clipboard.writeText(txt); $("copy").textContent = "Copied"; }
-    catch { const r = document.createRange(); r.selectNodeContents($("reportBody")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy").textContent = "Select ho gaya"; }
-    setTimeout(() => ($("copy").textContent = "Copy"), 1500);
-  };
-
-  // ---------- capability ----------
-  (async () => {
-    const sample = await window.claude?.use?.("sample").catch(() => null);
-    if (!sample) {
-      showError("Yeh page sirf claude.ai par (signed in) chalta hai. Wahan kholein taa ke Claude charts parh sake.");
-      return;
-    }
-    const lim = await sample.limits().catch(() => null);
-    if (!lim?.images) {
-      showError("Is view mein images bhejna supported nahi. claude.ai ko web browser mein kholein.");
-      return;
-    }
-    state.sample = sample;
-    state.maxImages = lim.images.maxCount || 10;
-    $("file").accept = lim.images.mediaTypes.join(",");
-    $("limitTxt").textContent = `Ek analysis mein ${state.maxImages} pics tak`;
-    updateGo();
-  })();
-})();
+---
+${e}`,{images:r.map(o=>o.file),modelTier:"complex",cache:!1,signal:p,onText:({text:o})=>s(o)})}catch(o){throw{cancelled:o?.code==="cancelled",keepText:o?.code!=="refused",userMessage:he[o?.code]}}}});(async()=>{if(R=await window.claude?.use?.("sample").catch(()=>null),!R)return U.setReady(!1,{note:"Yeh page sirf claude.ai par (signed in) chalta hai. Apni API key wala version Netlify par chalayein."});let a=await R.limits().catch(()=>null);if(!a?.images)return U.setReady(!1,{note:"Is view mein images bhejna supported nahi. claude.ai ko web browser mein kholein."});U.setReady(!0,{maxImages:a.images.maxCount||10,accept:a.images.mediaTypes.join(",")})})();})();
 </script>

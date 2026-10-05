@@ -64,9 +64,30 @@ Screenshots se levels parhne mein AI galti kar sakta hai, aur koi bhi analysis 1
 Har entry se pehle live chart par levels confirm karein aur risk 1–2% se zyada na rakhein.
 Yeh tool analysis mein madad ke liye hai — financial advice nahi.
 
-## Web version (claude.ai)
+## Web version
 
-`web/index.html` ek web page hai jo claude.ai par artifact ke taur par chalta hai: screenshots
-drag/drop ya paste karein, timeframe select karein, "Analyse karein" dabayein. Is ke liye API key
-nahi chahiye — analysis aap ke apne Claude account se hoti hai. RR, lot size aur killzone page khud
-calculate karta hai. Yeh page sirf claude.ai ke andar chalta hai (wahi Claude tak pahunch deta hai).
+Ek hi source (`web/src/`) se do pages bante hain (`npm install && npm run build`):
+
+| File | Kahan chalta hai | Claude kaise |
+|---|---|---|
+| `site/index.html` | Netlify (ya koi bhi static hosting, ya seedha browser mein file kholein) | Aap ki apni Anthropic API key — claude.ai subscription ki zaroorat nahi |
+| `web/index.html` | claude.ai artifact | Aap ke claude.ai account se |
+
+Dono mein: screenshots upload, trend → structure → liquidity → key level → premium/discount →
+real/fake breakout → LTF entry, phir choti (1M) aur bari (swing) trade: entry, SL, TP, RR,
+lot size, grade (A+/A/B/C), trade kitni der rakhni hai, breakeven/partial/trailing/time-stop,
+alternate scenario, aur chart par entry/SL/TP lines ("trade map").
+
+### Netlify par lagana (lifetime, apni API key ke saath)
+
+1. https://console.anthropic.com par account banayein → **Billing** mein credit daalein → **API Keys** se key banayein (`sk-ant-...`).
+2. Netlify:
+   - **Asaan tareeqa:** https://app.netlify.com/drop kholein aur repo ka `site` folder drag kar dein. Link mil jayega.
+   - **GitHub se (auto update):** Netlify → *Add new site* → *Import an existing project* → GitHub → yeh repo → branch chunein.
+     `netlify.toml` khud `site/` publish kar deta hai, koi build command nahi.
+3. Site kholein → **Settings** → API key paste karein. Key sirf aap ke browser mein save hoti hai aur seedha
+   `api.anthropic.com` ko jaati hai; Netlify ya kisi aur server par nahi jaati.
+
+Kharcha: har analysis takreeban $0.15–0.40 (Opus 5.5) ya $0.08–0.20 (Sonnet 5.5), pics ki tadaad par depend.
+Site public ho to bhi doosre log aap ki key use nahi kar sakte — har browser ko apni key chahiye.
+Agar kabhi model purana ho jaye to `web/src/template.html` mein model ka naam badal kar `npm run build` karein.
