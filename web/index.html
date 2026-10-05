@@ -1,0 +1,537 @@
+<title>SMC Chart Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: trading-desk split — chart intake on the left, the read-out on the right; stacks on phones. */
+:root {
+  --bg: #eef1f4; --surface: #ffffff; --sunk: #e5e9ee; --ink: #10161d; --muted: #5b6673; --line: #d3d9e0;
+  --accent: #2f5bd3; --accent-ink: #ffffff; --bull: #0d8459; --bear: #c2362f; --warn: #a96a12;
+  --bull-soft: #dff3ea; --bear-soft: #fbe4e2; --warn-soft: #fbf0dc;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b0f14; --surface: #121821; --sunk: #0f141b; --ink: #e6ebf1; --muted: #8d99a8; --line: #253141;
+  --accent: #7b96ff; --accent-ink: #0b0f14; --bull: #3cc995; --bear: #ff6f62; --warn: #e6ae4f;
+  --bull-soft: #10291f; --bear-soft: #2e1513; --warn-soft: #2b2010; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0b0f14; --surface: #121821; --sunk: #0f141b; --ink: #e6ebf1; --muted: #8d99a8; --line: #253141;
+  --accent: #7b96ff; --accent-ink: #0b0f14; --bull: #3cc995; --bear: #ff6f62; --warn: #e6ae4f;
+  --bull-soft: #10291f; --bear-soft: #2e1513; --warn-soft: #2b2010; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); padding-inline: 16px; padding-block: 20px 48px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px }
+h1 { font: 800 clamp(26px, 4vw, 34px)/1.05 var(--f-display); font-stretch: 80%; letter-spacing: -.01em; margin: 0; text-wrap: balance }
+h1 span { color: var(--accent) }
+.sub { color: var(--muted); margin: 0; max-width: 62ch }
+.clock { font: 500 13px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font: 600 11px var(--f-body); letter-spacing: .06em; text-transform: uppercase; background: var(--sunk); color: var(--muted); border: 1px solid var(--line) }
+.chip.on { background: var(--bull-soft); color: var(--bull); border-color: transparent }
+.chip.off { background: var(--warn-soft); color: var(--warn); border-color: transparent }
+
+.grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; min-width: 0 }
+.label { font: 600 11px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+
+.drop { border: 1.5px dashed var(--line); border-radius: var(--r); background: var(--sunk); padding: 22px 14px; text-align: center; cursor: pointer; display: grid; gap: 4px; transition: border-color .15s, background .15s }
+.drop:hover, .drop.drag, .drop:focus-visible { border-color: var(--accent); outline: none }
+.drop strong { font: 700 16px var(--f-display); font-stretch: 90% }
+.drop small { color: var(--muted) }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px }
+.thumb { display: grid; gap: 6px; min-width: 0 }
+.thumb .img { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--sunk) }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+.thumb button.x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; font-size: 14px; line-height: 1 }
+.thumb select { width: 100% }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.fields .full { grid-column: 1 / -1 }
+.field { display: grid; gap: 5px; min-width: 0 }
+input, select, textarea { font: 500 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0 }
+input.mono { font-family: var(--f-mono) }
+textarea { resize: vertical; min-height: 60px }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.hint { color: var(--muted); font-size: 12.5px }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap }
+button.primary { flex: 1; min-width: 160px; font: 700 15px var(--f-display); font-stretch: 90%; letter-spacing: .02em; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); cursor: pointer }
+button.primary:disabled { opacity: .45; cursor: not-allowed }
+button.ghost { font: 600 13px var(--f-body); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer }
+
+.out { display: grid; gap: 16px; min-width: 0 }
+.status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px }
+.pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite }
+@keyframes pulse { 50% { opacity: .25 } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none } }
+.example-tag { justify-self: start }
+
+.move { display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--r); background: var(--sunk); border: 1px solid var(--line) }
+.move .dir { font: 800 28px/1.1 var(--f-display); font-stretch: 78% }
+.move.up .dir { color: var(--bull) } .move.down .dir { color: var(--bear) } .move.side .dir { color: var(--warn) }
+.move p { margin: 0 }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0 }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap }
+.card h3 { margin: 0; font: 700 17px var(--f-display); font-stretch: 88% }
+.pill { font: 700 12px var(--f-mono); padding: 3px 10px; border-radius: 999px; letter-spacing: .04em }
+.pill.long { background: var(--bull-soft); color: var(--bull) }
+.pill.short { background: var(--bear-soft); color: var(--bear) }
+.pill.none { background: var(--sunk); color: var(--muted) }
+table.lv { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
+table.lv td { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px }
+table.lv td:nth-child(2) { font-family: var(--f-mono); text-align: right }
+table.lv td:nth-child(3) { font-family: var(--f-mono); text-align: right; color: var(--muted); width: 70px }
+table.lv tr.sl td:nth-child(2) { color: var(--bear) }
+table.lv tr.tp td:nth-child(2) { color: var(--bull) }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px }
+.kv dt { color: var(--muted) } .kv dd { margin: 0; font-family: var(--f-mono); text-align: right; min-width: 0; overflow-wrap: anywhere }
+.trigger { font-size: 13.5px; color: var(--muted); margin: 0 }
+.conf { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden }
+.conf i { display: block; height: 100%; background: var(--accent) }
+.warns { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none }
+.warns li { padding: 9px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--ink); font-size: 13.5px; border-left: 3px solid var(--warn) }
+.warns li.bad { background: var(--bear-soft); border-left-color: var(--bear) }
+
+.report { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; min-width: 0; overflow-wrap: anywhere }
+.report h3 { font: 700 16px var(--f-display); font-stretch: 88%; margin: 18px 0 6px; padding-top: 14px; border-top: 1px solid var(--line) }
+.report h3:first-child { margin-top: 0; padding-top: 0; border-top: 0 }
+.report p { margin: 6px 0; max-width: 75ch }
+.report ul { margin: 6px 0; padding-left: 20px; max-width: 75ch }
+.report li { margin: 3px 0 }
+.report-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap }
+.err { padding: 12px 14px; border-radius: 8px; background: var(--bear-soft); border-left: 3px solid var(--bear) }
+footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
+a { color: var(--accent) }
+</style>
+
+<div class="wrap">
+  <header>
+    <div style="display:grid;gap:6px;min-width:0">
+      <h1>SMC Chart <span>Reader</span></h1>
+      <p class="sub">Charts ki screenshots daalein (1m se 1D tak). Claude unhein bina indicators ke parh kar structure, liquidity, FVG/OB, premium/discount dekhta hai aur agla move aur trade plan batata hai.</p>
+    </div>
+    <div class="clock"><span id="clockTxt">—</span><span id="kzChip" class="chip">—</span></div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Charts aur settings">
+      <div class="label">1 · Charts</div>
+      <div id="drop" class="drop" tabindex="0" role="button" aria-label="Chart screenshots upload karein">
+        <strong>Screenshots yahan drop karein</strong>
+        <small>ya click karein · Ctrl+V se paste bhi ho sakta hai</small>
+        <small id="limitTxt"></small>
+      </div>
+      <input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <div id="thumbs" class="thumbs"></div>
+      <p class="hint">Har pic ka timeframe neeche select karein. Price scale (right side) pic mein saaf nazar aaye, faltu toolbar crop kar dein.</p>
+
+      <div class="label">2 · Account</div>
+      <div class="fields">
+        <label class="field"><span class="hint">Pair / Symbol</span><input id="pair" class="mono" placeholder="XAUUSD" autocomplete="off"></label>
+        <label class="field"><span class="hint">Balance ($)</span><input id="balance" class="mono" type="number" min="1" step="any" value="1000"></label>
+        <label class="field"><span class="hint">Risk % per trade</span><input id="risk" class="mono" type="number" min="0.1" max="10" step="0.1" value="1"></label>
+        <label class="field"><span class="hint">Units per lot</span><input id="contract" class="mono" type="number" min="0" step="any" placeholder="auto"></label>
+        <label class="field full"><span class="hint">Notes (optional)</span><textarea id="notes" placeholder="Masalan: sirf sell setups dekhna hai, ya NY open ka wait kar raha hoon"></textarea></label>
+      </div>
+
+      <div class="actions">
+        <button id="go" class="primary" disabled>Analyse karein</button>
+        <button id="stop" class="ghost" hidden>Stop</button>
+        <button id="clear" class="ghost">Clear</button>
+      </div>
+      <p class="hint">News: is page se Forex Factory check nahi ho sakta. Entry se pehle <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">Forex Factory calendar</a> par red-folder news khud dekh lein.</p>
+    </section>
+
+    <section class="out" aria-live="polite">
+      <div id="status" class="status" hidden><span class="pulse"></span><span id="statusTxt">Charts parhe ja rahe hain…</span></div>
+      <div id="errBox" class="err" hidden></div>
+      <span id="exampleTag" class="chip example-tag">Namoona — yeh example hai, live analysis nahi</span>
+      <div id="move"></div>
+      <div id="cards" class="cards"></div>
+      <ul id="warns" class="warns"></ul>
+      <div id="report" class="report" hidden>
+        <div class="report-head"><span class="label">Poori analysis</span><button id="copy" class="ghost">Copy</button></div>
+        <div id="reportBody"></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>Levels screenshot se parhe jaate hain aur galat ho sakte hain; har entry se pehle live chart par confirm karein aur risk 1–2% se zyada na rakhein. Yeh analysis mein madad ka tool hai, financial advice nahi.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const TF = ["1W", "1D", "4H", "2H", "1H", "30m", "15m", "5m", "3m", "1m"];
+  const state = { charts: [], sample: null, maxImages: 10, ctl: null, raw: "" };
+
+  // ---------- settings (per-browser convenience) ----------
+  const SETTINGS = ["pair", "balance", "risk", "contract"];
+  try {
+    const saved = JSON.parse(localStorage.getItem("smc-settings") || "{}");
+    for (const k of SETTINGS) if (saved[k] != null && saved[k] !== "") $(k).value = saved[k];
+  } catch {}
+  const saveSettings = () => {
+    try { localStorage.setItem("smc-settings", JSON.stringify(Object.fromEntries(SETTINGS.map((k) => [k, $(k).value])))); } catch {}
+  };
+  SETTINGS.forEach((k) => $(k).addEventListener("change", saveSettings));
+
+  // ---------- sessions / killzones (New York time) ----------
+  function nyParts(d = new Date()) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(d).map((x) => [x.type, x.value]));
+    return { wd: p.weekday, h: +p.hour, m: +p.minute };
+  }
+  function sessionInfo(d = new Date()) {
+    const { wd, h, m } = nyParts(d);
+    const t = h + m / 60;
+    const closed = wd === "Sat" || (wd === "Fri" && t >= 17) || (wd === "Sun" && t < 17);
+    const active = [];
+    if (t >= 20) active.push("Asia Session");
+    if (t >= 2 && t < 5) active.push("London Killzone");
+    if (t >= 7 && t < 10) active.push("New York Killzone");
+    if (t >= 10 && t < 12) active.push("London Close");
+    const kz = !closed && active.some((s) => s.includes("Killzone"));
+    const utc = d.toISOString().slice(0, 16).replace("T", " ");
+    const ny = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return { closed, active: closed ? [] : active, kz, utc, ny, wd };
+  }
+  function renderClock() {
+    const s = sessionInfo();
+    $("clockTxt").textContent = `${s.utc} UTC · NY ${s.ny}`;
+    const chip = $("kzChip");
+    chip.className = "chip " + (s.kz ? "on" : "off");
+    chip.textContent = s.closed ? "Market band (weekend)" : s.kz ? s.active.find((x) => x.includes("Killzone")) : (s.active[0] || "Off-session");
+  }
+  renderClock();
+  setInterval(renderClock, 30000);
+
+  // ---------- chart intake ----------
+  function guessTf(name) {
+    const t = " " + name.toLowerCase().replace(/[_\-.]/g, " ") + " ";
+    let m;
+    if ((m = t.match(/\b(1|3|5|15|30)\s*(m|min|mins|minute)\b/)) || (m = t.match(/\bm(1|3|5|15|30)\b/))) return m[1] + "m";
+    if ((m = t.match(/\b(1|2|4)\s*(h|hr|hour)\b/)) || (m = t.match(/\bh(1|4)\b/))) return m[1] + "H";
+    if (/\b1?\s*(d|day|daily)\b/.test(t)) return "1D";
+    if (/\b1?\s*(w|week|weekly)\b/.test(t)) return "1W";
+    return "";
+  }
+  function addFiles(files) {
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue;
+      if (state.charts.length >= state.maxImages) { showError(`Ek dafa mein ${state.maxImages} pics tak. Sab se zaroori timeframes rakhein.`); break; }
+      state.charts.push({ file: f, url: URL.createObjectURL(f), tf: guessTf(f.name || "") });
+    }
+    renderThumbs();
+  }
+  function renderThumbs() {
+    const box = $("thumbs");
+    box.replaceChildren(...state.charts.map((c, i) => {
+      const el = document.createElement("div");
+      el.className = "thumb";
+      const opts = ['<option value="">Timeframe?</option>', ...TF.map((t) => `<option${t === c.tf ? " selected" : ""}>${t}</option>`)].join("");
+      el.innerHTML = `<div class="img"><img alt="Chart ${i + 1}"><button class="x" aria-label="Hatayein">×</button></div><select id="tf-${i}" aria-label="Chart ${i + 1} timeframe">${opts}</select>`;
+      el.querySelector("img").src = c.url;
+      el.querySelector("select").onchange = (e) => { c.tf = e.target.value; };
+      el.querySelector(".x").onclick = () => { URL.revokeObjectURL(c.url); state.charts.splice(i, 1); renderThumbs(); };
+      return el;
+    }));
+    updateGo();
+  }
+  function updateGo() { $("go").disabled = !state.sample || !state.charts.length || !!state.ctl; }
+
+  const drop = $("drop");
+  drop.onclick = () => $("file").click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
+  $("file").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("drag"); };
+  drop.ondragleave = () => drop.classList.remove("drag");
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("drag"); addFiles(e.dataTransfer.files); };
+  document.addEventListener("paste", (e) => {
+    const files = [...(e.clipboardData?.items || [])].filter((it) => it.kind === "file").map((it) => it.getAsFile()).filter(Boolean);
+    if (files.length) addFiles(files);
+  });
+  $("clear").onclick = () => {
+    state.charts.forEach((c) => URL.revokeObjectURL(c.url));
+    state.charts = [];
+    renderThumbs();
+  };
+
+  // ---------- risk math (done here, never by the model) ----------
+  const CONTRACTS = [["XAU", 100], ["GOLD", 100], ["XAG", 5000], ["SILVER", 5000], ["BTC", 1], ["ETH", 1],
+    ["US30", 1], ["NAS", 1], ["US100", 1], ["SPX", 1], ["US500", 1], ["GER40", 1], ["DE40", 1], ["UK100", 1], ["WTI", 1000], ["USOIL", 1000]];
+  function contractFor(sym) {
+    const s = (sym || "").toUpperCase().replace(/[\/_]/g, "");
+    if (!s) return null;
+    for (const [p, v] of CONTRACTS) if (s.startsWith(p)) return v;
+    return /^[A-Z]{6}$/.test(s) ? 100000 : null;
+  }
+  const quoteUsd = (sym) => { const s = (sym || "").toUpperCase().replace("/", ""); return /^[A-Z]{6}$/.test(s) ? s.endsWith("USD") : true; };
+  const num = (x) => (x === null || x === undefined || x === "" || isNaN(+x) ? null : +x);
+  const fmt = (x) => Math.abs(x) < 10 ? (+x.toFixed(5)).toString() : x.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+  function sizeLeg(leg, bal, riskPct, contract) {
+    const entry = num(leg?.entry), sl = num(leg?.stop_loss);
+    const tps = (leg?.take_profits || []).map(num).filter((v) => v !== null);
+    const dir = leg?.direction;
+    if (!["long", "short"].includes(dir) || entry === null || sl === null || !tps.length) return null;
+    const errors = [];
+    if (dir === "long" && sl >= entry) errors.push("Long mein SL entry se neeche hona chahiye.");
+    if (dir === "long" && tps.some((t) => t <= entry)) errors.push("Long mein har TP entry se upar hona chahiye.");
+    if (dir === "short" && sl <= entry) errors.push("Short mein SL entry se upar hona chahiye.");
+    if (dir === "short" && tps.some((t) => t >= entry)) errors.push("Short mein har TP entry se neeche hona chahiye.");
+    const stop = Math.abs(entry - sl);
+    const riskAmt = bal * riskPct / 100;
+    const rr = stop ? tps.map((t) => Math.abs(t - entry) / stop) : [];
+    const lots = stop && contract ? Math.floor((riskAmt / stop / contract) * 100 + 1e-9) / 100 : null;
+    return { dir, entry, sl, tps, rr, stop, riskAmt, lots, units: stop ? riskAmt / stop : 0, errors };
+  }
+
+  // ---------- prompt ----------
+  const RULES = `Tum ek senior Smart Money Concepts (SMC) / ICT price-action trader ho. Trader ne EK HI instrument ke alag alag timeframes ki chart screenshots bheji hain. Koi indicator use nahi hota: sirf candles aur price axis se pure price action parho.
+
+Kaam: har chart dhyan se parho, top-down picture banao, phir batao agla probable move kya hai aur trade plan do — ya saaf kaho ke abhi valid trade nahi hai. "No trade" bhi sahi jawab hai; kabhi zabardasti setup na banao.
+
+Screenshots parhne ke usool:
+- Har image ka timeframe neeche list mein diya hai; agar "unknown" ho to chart ke top-left se parho, na mile to batao.
+- Price levels SIRF price axis / labels se parho. Jo level saaf na parha jaye us ke saath "(approx)" likho. Jo precision nazar nahi aa rahi woh invent na karo.
+- Instrument na diya ho to chart header se parho.
+- Koi zaroori timeframe missing ho (HTF ya 1m/5m) to batao aur confidence kam rakho.
+
+Confluence checklist (isi tarteeb se):
+1. Market Structure (D/4H/1H): HH/HL ya LH/LL ya range; BOS (body close se swing break); CHoCH (trend ke baad pehla opposite break).
+2. Liquidity: EQH/EQL, trendline liquidity, Asia high/low, previous day high/low ka sweep (wick se le kar andar close)? Inducement (IDM)? Agli resting liquidity (draw on liquidity) kahan hai?
+3. POIs: valid Order Block (displacement se pehle ki last opposite candle, sweep ke baad, imbalance ke saath); FVG (mitigated/unmitigated); Supply/Demand zones; Breaker/Mitigation blocks.
+4. Key levels: Daily/Weekly high-low, session highs/lows. Current dealing range ka Fib: buy sirf DISCOUNT (0.5 se neeche), sell sirf PREMIUM (0.5 se upar). Range high, range low aur 0.5 level batao.
+5. LTF confirmation (15m/5m/1m): HTF POI tap ke baad LTF CHoCH/BOS, rejection wick, engulfing, displacement. Agar abhi confirmation nahi hua to exact condition batao jis ka wait karna hai. London/NY killzone ko tarjeeh do, off-session setup flag karo.
+6. Risk: SL sweep wick / OB extreme ke peeche (structural, fixed pips nahi). TP: unmitigated FVG, opposite liquidity, swing points. Final target par kam az kam 1:3 RR; structure 1:3 na de to trade valid nahi.
+
+Do trades:
+- Choti trade (scalp/intraday): HTF bias + HTF POI, entry 1m (ya 5m) par refine.
+- Bari trade (swing): 4H/1H structure aur POIs se, ghanton se dinon tak.
+Dono alag alag "none" ho sakti hain. Dono HTF bias ke saath honi chahiyein, siwaye is ke ke tum major HTF level se counter-trend scalp ki wazeh wajah do.
+
+Jawab ka format:
+Roman Urdu mein likho (jaise Pakistani traders chat karte hain), trading terms English mein (BOS, CHoCH, FVG, OB, liquidity sweep, premium/discount, SL, TP, RR). Har section "## " se shuru karo, points "- " se. Tables na banao. Real price levels likho, generic theory nahi. Lot size ya paise calculate na karo — page khud karega.
+
+Sections bilkul yeh:
+## Agla Move (2-3 lines: price ka next probable move, kahan tak, aur kyun)
+## 1. Market Structure (D/4H/1H)
+## 2. Liquidity
+## 3. POIs (OB / FVG / Supply-Demand / Breaker)
+## 4. Key Levels aur Premium/Discount
+## 5. LTF Confirmation (15m/5m/1m)
+## 6. Session aur News
+## Choti Trade (1M entry)
+## Bari Trade (Swing)
+## Confluence Checklist (har item ✅ ya ❌, aakhir mein score jaise 7/10)
+## Invalidation
+
+Aakhir mein, sirf ek dafa, yeh machine-readable block:
+<trade_json>
+{"symbol": "XAUUSD", "current_price": 2345.6, "htf_bias": "bullish",
+ "next_move": {"direction": "up", "target": 2360.0, "summary": "Asia low sweep ke baad 1H FVG se buyside liquidity 2360 ki taraf"},
+ "scalp": {"direction": "long", "entry": 2340.0, "stop_loss": 2336.5, "take_profits": [2348.0, 2352.0], "entry_type": "confirmation", "trigger": "4H OB tap ke baad 1m CHoCH 2341 ke upar", "confidence": 65},
+ "swing": {"direction": "none", "entry": null, "stop_loss": null, "take_profits": [], "entry_type": null, "trigger": null, "confidence": 0}}
+</trade_json>
+JSON ke usool: sirf valid JSON; direction "long", "short" ya "none"; next_move.direction "up", "down" ya "sideways"; numbers bina comma; entry_type "limit" ya "confirmation" ya null; confidence 0-100, imaandari se (80 se upar kam hi).`;
+
+  function buildPrompt(charts) {
+    const s = sessionInfo();
+    const list = charts.map((c, i) => `Image ${i + 1}: timeframe ${c.tf || "unknown"}`).join("\n");
+    const session = s.closed ? "Forex market BAND hai (weekend)." :
+      `Active: ${s.active.join(", ") || "koi major session/killzone nahi (off-session)"}. Killzone ke andar: ${s.kz ? "HAAN" : "NAHI"}.`;
+    return `${RULES}
+
+---
+Is analysis ka data:
+Instrument: ${$("pair").value.trim() || "nahi diya — chart se parho"}
+Account: balance ${$("balance").value}, risk ${$("risk").value}% per trade
+Abhi ka waqt (page ne compute kiya, chart ke clock se zyada bharosa isi par): ${s.utc} UTC, New York ${s.ny} (${s.wd}). ${session}
+News: page news check nahi kar sakta — trader ko yaad dilao ke Forex Factory par red-folder news khud dekhe.
+Trader ke notes: ${$("notes").value.trim() || "koi nahi"}
+
+Images (isi tarteeb mein attach hain, bade timeframe pehle):
+${list}`;
+  }
+
+  // ---------- rendering ----------
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderReport(text) {
+    const visible = text.split("<trade_json>")[0].trim();
+    const html = [];
+    let inList = false;
+    for (const line of visible.split("\n")) {
+      const l = line.trim();
+      const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      if (/^-\s+/.test(l)) { if (!inList) { html.push("<ul>"); inList = true; } html.push(`<li>${inline(l.replace(/^-\s+/, ""))}</li>`); continue; }
+      if (inList) { html.push("</ul>"); inList = false; }
+      if (/^#{1,4}\s+/.test(l)) html.push(`<h3>${inline(l.replace(/^#+\s+/, ""))}</h3>`);
+      else if (l) html.push(`<p>${inline(l)}</p>`);
+    }
+    if (inList) html.push("</ul>");
+    $("reportBody").innerHTML = html.join("");
+    $("report").hidden = !visible;
+  }
+
+  function parseTrade(text) {
+    const m = text.match(/<trade_json>\s*([\s\S]*?)\s*<\/trade_json>/);
+    if (!m) return null;
+    try { return JSON.parse(m[1].replace(/^```(json)?|```$/g, "").trim()); } catch { return null; }
+  }
+
+  function legCard(title, leg, sized, bal, riskPct, contract, sym) {
+    const card = document.createElement("article");
+    card.className = "card";
+    const dir = sized ? sized.dir : "none";
+    const pill = dir === "long" ? "LONG" : dir === "short" ? "SHORT" : "NO TRADE";
+    let body = "";
+    if (!sized) {
+      body = `<p class="trigger">${esc(leg?.trigger || "Abhi valid setup nahi — confluence poora hone ka wait karein.")}</p>`;
+    } else {
+      const rows = [`<tr><td>Entry${leg.entry_type ? ` · ${esc(String(leg.entry_type))}` : ""}</td><td>${fmt(sized.entry)}</td><td></td></tr>`,
+        `<tr class="sl"><td>Stop loss</td><td>${fmt(sized.sl)}</td><td></td></tr>`,
+        ...sized.tps.map((t, i) => `<tr class="tp"><td>TP${i + 1}</td><td>${fmt(t)}</td><td>1:${sized.rr[i] ? sized.rr[i].toFixed(1) : "—"}</td></tr>`)].join("");
+      const lotTxt = sized.lots === null ? `${sized.units.toFixed(4)} units` :
+        sized.lots < 0.01 ? "0.01 bhi zyada risk" : `${sized.lots.toFixed(2)} lots${quoteUsd(sym) ? "" : " (approx)"}`;
+      const conf = Math.max(0, Math.min(100, num(leg.confidence) ?? 0));
+      body = `<table class="lv">${rows}</table>
+        <dl class="kv"><dt>Risk</dt><dd>$${sized.riskAmt.toFixed(2)} (${riskPct}%)</dd>
+        <dt>SL distance</dt><dd>${fmt(sized.stop)}</dd>
+        <dt>Position</dt><dd>${lotTxt}</dd>
+        <dt>Confidence</dt><dd>${conf}%</dd></dl>
+        <div class="conf" aria-hidden="true"><i style="width:${conf}%"></i></div>
+        ${leg.trigger ? `<p class="trigger"><strong>Trigger:</strong> ${esc(String(leg.trigger))}</p>` : ""}`;
+    }
+    card.innerHTML = `<div class="card-head"><h3>${title}</h3><span class="pill ${dir}">${pill}</span></div>${body}`;
+    return card;
+  }
+
+  function renderTrade(trade) {
+    const sym = $("pair").value.trim() || trade?.symbol || "";
+    const bal = +$("balance").value || 0, riskPct = +$("risk").value || 0;
+    const contract = num($("contract").value) || contractFor(sym);
+    const nm = trade?.next_move || {};
+    const cls = nm.direction === "up" ? "up" : nm.direction === "down" ? "down" : "side";
+    const word = nm.direction === "up" ? "Upar (Bullish)" : nm.direction === "down" ? "Neeche (Bearish)" : "Sideways / Wait";
+    $("move").innerHTML = trade ? `<div class="move ${cls}"><span class="label">Agla probable move${sym ? " · " + esc(sym) : ""}${trade.current_price ? " · abhi " + fmt(+trade.current_price) : ""}</span>
+      <div class="dir">${word}${num(nm.target) !== null ? ` → ${fmt(+nm.target)}` : ""}</div>${nm.summary ? `<p>${esc(String(nm.summary))}</p>` : ""}</div>` : "";
+
+    const warns = [];
+    const cards = [];
+    for (const [key, title] of [["scalp", "Choti trade · 1M entry"], ["swing", "Bari trade · Swing"]]) {
+      const leg = trade?.[key];
+      const sized = leg ? sizeLeg(leg, bal, riskPct, contract) : null;
+      cards.push(legCard(title, leg, sized, bal, riskPct, contract, sym));
+      if (sized) {
+        sized.errors.forEach((e) => warns.push(["bad", `${title}: ${e}`]));
+        if (sized.rr.length && Math.max(...sized.rr) < 3) warns.push(["bad", `${title}: final target 1:3 se kam hai — checklist ke hisaab se skip karein.`]);
+        if (sized.lots === null) warns.push(["", `${title}: lot size ke liye "Units per lot" bharein (forex 100000, gold 100).`]);
+      }
+    }
+    $("cards").replaceChildren(...(trade ? cards : []));
+    const s = sessionInfo();
+    if (riskPct > 2) warns.push(["", `${riskPct}% risk zyada hai — pro traders 1–2% se upar nahi jaate.`]);
+    if (s.closed) warns.push(["", "Market abhi band hai (weekend)."]);
+    else if (!s.kz) warns.push(["", "Abhi London/NY killzone nahi — off-session entry avoid karein ya killzone ka wait karein."]);
+    if (trade) warns.push(["", "Levels screenshot se parhe gaye hain — live chart par confirm karein, aur Forex Factory par news dekh lein."]);
+    $("warns").replaceChildren(...warns.map(([c, t]) => { const li = document.createElement("li"); if (c) li.className = c; li.textContent = t; return li; }));
+  }
+
+  function showError(msg) { $("errBox").textContent = msg; $("errBox").hidden = !msg; }
+  const ERR = {
+    not_granted: "Is page ko Claude use karne ki ijazat nahi mili. Page ke Permissions menu se allow karein.",
+    sampling_disabled: "Aap ke account par yeh feature available nahi.",
+    images_unavailable: "Is view mein images nahi bheji ja saktein. Page ko claude.ai par browser mein kholein.",
+    image_rejected: "Koi image qabool nahi hui (type ya size). PNG/JPG screenshot dobara daalein.",
+    rate_limited: "Abhi bohat zyada requests ho gayi hain ya usage limit poori. Thori der baad try karein.",
+    session_expired: "Dobara sign in karein.",
+    refused: "Claude ne yeh request decline kar di. Notes badal kar dobara try karein.",
+    empty_completion: "Jawab khali aaya. Kam pics ke saath dobara try karein.",
+    prompt_too_large: "Request bohat bari hai. Notes chhote karein.",
+  };
+
+  // ---------- example state (first frame) ----------
+  const EXAMPLE = {
+    symbol: "XAUUSD", current_price: 2351.4,
+    next_move: { direction: "down", target: 2338.0, summary: "1H par buyside liquidity (EQH 2356) sweep ho chuki, 15m CHoCH neeche — price 1H FVG 2338 ki taraf ja sakti hai." },
+    scalp: { direction: "short", entry: 2353.0, stop_loss: 2356.8, take_profits: [2345.0, 2338.0], entry_type: "confirmation", trigger: "15m FVG 2352–2354 tap ke baad 1m CHoCH 2350.5 ke neeche", confidence: 60 },
+    swing: { direction: "none", entry: null, stop_loss: null, take_profits: [], trigger: "4H abhi range mein — 4H BOS ka wait karein" },
+  };
+  renderTrade(EXAMPLE);
+
+  // ---------- run ----------
+  $("go").onclick = async () => {
+    if (!state.sample || !state.charts.length) return;
+    const charts = [...state.charts].sort((a, b) => (TF.indexOf(a.tf) + 99 * !a.tf) - (TF.indexOf(b.tf) + 99 * !b.tf));
+    const ctl = new AbortController();
+    state.ctl = ctl;
+    updateGo();
+    $("stop").hidden = false;
+    showError("");
+    $("exampleTag").hidden = true;
+    $("move").innerHTML = ""; $("cards").replaceChildren(); $("warns").replaceChildren();
+    $("report").hidden = true; $("reportBody").innerHTML = "";
+    $("status").hidden = false;
+    $("statusTxt").textContent = `${charts.length} charts parhe ja rahe hain… pehla jawab aane mein 30–90 second lag sakte hain.`;
+    try {
+      const { text, truncated } = await state.sample(buildPrompt(charts), {
+        images: charts.map((c) => c.file),
+        modelTier: "complex",
+        cache: false,
+        signal: ctl.signal,
+        onText: ({ text }) => { state.raw = text; $("statusTxt").textContent = "Analysis likhi ja rahi hai…"; renderReport(text); },
+      });
+      state.raw = text;
+      renderReport(text);
+      const trade = parseTrade(text);
+      renderTrade(trade);
+      if (!trade) showError("Trade levels parse nahi ho sake — neeche poori analysis parhein aur lot size khud nikaalein.");
+      if (truncated) showError("Jawab lamba ho kar kat gaya — kam pics ke saath dobara try karein.");
+    } catch (e) {
+      if (e?.code === "refused") $("reportBody").innerHTML = "";
+      else if (e?.text) renderReport(e.text);
+      if (e?.code !== "cancelled") showError(ERR[e?.code] || "Connection ya service ka masla aaya. Dobara 'Analyse karein' dabayein.");
+    } finally {
+      state.ctl = null;
+      $("status").hidden = true;
+      $("stop").hidden = true;
+      updateGo();
+    }
+  };
+  $("stop").onclick = () => state.ctl?.abort();
+  $("copy").onclick = async () => {
+    const txt = state.raw.split("<trade_json>")[0].trim();
+    try { await navigator.clipboard.writeText(txt); $("copy").textContent = "Copied"; }
+    catch { const r = document.createRange(); r.selectNodeContents($("reportBody")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy").textContent = "Select ho gaya"; }
+    setTimeout(() => ($("copy").textContent = "Copy"), 1500);
+  };
+
+  // ---------- capability ----------
+  (async () => {
+    const sample = await window.claude?.use?.("sample").catch(() => null);
+    if (!sample) {
+      showError("Yeh page sirf claude.ai par (signed in) chalta hai. Wahan kholein taa ke Claude charts parh sake.");
+      return;
+    }
+    const lim = await sample.limits().catch(() => null);
+    if (!lim?.images) {
+      showError("Is view mein images bhejna supported nahi. claude.ai ko web browser mein kholein.");
+      return;
+    }
+    state.sample = sample;
+    state.maxImages = lim.images.maxCount || 10;
+    $("file").accept = lim.images.mediaTypes.join(",");
+    $("limitTxt").textContent = `Ek analysis mein ${state.maxImages} pics tak`;
+    updateGo();
+  })();
+})();
+</script>

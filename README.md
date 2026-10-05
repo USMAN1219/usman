@@ -63,3 +63,10 @@ pip install pytest && python -m pytest -q
 Screenshots se levels parhne mein AI galti kar sakta hai, aur koi bhi analysis 100% sahi nahi hota.
 Har entry se pehle live chart par levels confirm karein aur risk 1–2% se zyada na rakhein.
 Yeh tool analysis mein madad ke liye hai — financial advice nahi.
+
+## Web version (claude.ai)
+
+`web/index.html` ek web page hai jo claude.ai par artifact ke taur par chalta hai: screenshots
+drag/drop ya paste karein, timeframe select karein, "Analyse karein" dabayein. Is ke liye API key
+nahi chahiye — analysis aap ke apne Claude account se hoti hai. RR, lot size aur killzone page khud
+calculate karta hai. Yeh page sirf claude.ai ke andar chalta hai (wahi Claude tak pahunch deta hai).
