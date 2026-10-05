@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { AnalysisRecord, WatchlistItem } from "../../shared/types.ts";
 import { api, ApiError } from "../lib/api.ts";
 import { useAuth } from "../lib/auth.tsx";
-import { guessTimeframe, prepareImage, type PreparedImage } from "../lib/compress.ts";
+import { guessTimeframe, newId, prepareImage, type PreparedImage } from "../lib/compress.ts";
 
 const TIMEFRAMES = ["1D", "4h", "1h", "30m", "15m", "5m", "1m"];
 const rank = (tf: string | null) => (tf && TIMEFRAMES.includes(tf) ? TIMEFRAMES.indexOf(tf) : 99);
@@ -56,7 +56,7 @@ export function UploadPanel({ onSubmitted }: { onSubmitted?: () => void }) {
           URL.revokeObjectURL(p.previewUrl);
           continue;
         }
-        next.push({ ...p, id: crypto.randomUUID(), label: guessTimeframe(f.name), name: f.name });
+        next.push({ ...p, id: newId(), label: guessTimeframe(f.name), name: f.name });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }

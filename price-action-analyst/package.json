@@ -18,7 +18,8 @@
     "test:e2e": "node --env-file-if-exists=.env --import tsx e2e/run-e2e.ts",
     "db:migrate": "tsx --env-file-if-exists=.env server/scripts/migrate.ts",
     "analyze:file": "tsx --env-file-if-exists=.env server/scripts/analyze-file.ts",
-    "charts:generate": "tsx e2e/generate-charts.ts"
+    "charts:generate": "tsx e2e/generate-charts.ts",
+    "build:instant": "vite build --config vite.artifact.config.ts && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

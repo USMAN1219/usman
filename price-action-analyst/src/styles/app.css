@@ -20,8 +20,9 @@
   line-height: 1.5;
 }
 
+/* Dark-first. Light palette for light OS setting (unless the host forces dark) and for an explicit light choice. */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     --bg: #f4f6fb;
     --surface: #ffffff;
     --surface-2: #f1f5f9;
@@ -38,6 +39,23 @@
     --shadow: 0 1px 3px rgb(15 23 42 / 0.08);
     color-scheme: light;
   }
+}
+:root[data-theme="light"] {
+  --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+    --border: #dbe2ee;
+    --text: #0f172a;
+    --muted: #5b6b82;
+    --accent: #0369a1;
+    --accent-ink: #ffffff;
+    --long: #15803d;
+    --short: #b91c1c;
+    --wait: #475569;
+    --warn: #b45309;
+    --danger: #b91c1c;
+    --shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+    color-scheme: light;
 }
 
 * { box-sizing: border-box; }

@@ -9,3 +9,4 @@ coverage
 e2e/output
 *.log
 .tsbuild
+dist-artifact

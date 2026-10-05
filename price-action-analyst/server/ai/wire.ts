@@ -12,6 +12,8 @@
  * image indexes are never legitimately negative, so -1 is unambiguous.
  */
 import { z } from "zod";
+import { ChartAnalysisSchema } from "../../shared/analysis-schema.ts";
+import { toStrictJsonSchema } from "./json-schema.ts";
 
 const NUM_SENTINEL = -1;
 
@@ -84,3 +86,7 @@ export function countUnions(jsonSchema: unknown): number {
   walk(jsonSchema);
   return n;
 }
+
+/** Union-free schema the model fills in, and its strict JSON Schema form. Browser-safe (no Node imports). */
+export const WIRE_SCHEMA = toWireSchema(ChartAnalysisSchema);
+export const WIRE_JSON_SCHEMA = toStrictJsonSchema(WIRE_SCHEMA);

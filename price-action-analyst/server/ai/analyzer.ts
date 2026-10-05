@@ -11,12 +11,10 @@ import { ChartAnalysisSchema, type ChartAnalysis } from "../../shared/analysis-s
 import type { AppConfig } from "../config.ts";
 import { log } from "../logger.ts";
 import { buildUserPrompt, SYSTEM_PROMPT } from "./prompt.ts";
-import { toStrictJsonSchema } from "./json-schema.ts";
-import { fromWire, toWireSchema } from "./wire.ts";
+import { fromWire, WIRE_JSON_SCHEMA, WIRE_SCHEMA } from "./wire.ts";
 
 /** Union-free schema actually sent to the API (see wire.ts for why). */
-export const WIRE_SCHEMA = toWireSchema(ChartAnalysisSchema);
-export const WIRE_JSON_SCHEMA = toStrictJsonSchema(WIRE_SCHEMA);
+export { WIRE_JSON_SCHEMA, WIRE_SCHEMA };
 
 export interface AnalyzerImage {
   data: Uint8Array;

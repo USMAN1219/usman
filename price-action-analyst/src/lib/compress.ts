@@ -18,10 +18,19 @@ export interface PreparedImage {
   sha256: string;
 }
 
+/** Content fingerprint for duplicate detection. SHA-256 where available, FNV-1a otherwise (non-secure contexts). */
 async function sha256(buf: ArrayBuffer) {
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (globalThis.crypto?.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", buf);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  let h = 0x811c9dc5;
+  for (const b of new Uint8Array(buf)) h = Math.imul(h ^ b, 0x01000193) >>> 0;
+  return `fnv-${h.toString(16)}-${buf.byteLength}`;
 }
+
+export const newId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
   return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));

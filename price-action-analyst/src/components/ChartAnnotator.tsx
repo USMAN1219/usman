@@ -54,9 +54,11 @@ interface Props {
   width: number;
   height: number;
   label: string | null;
+  /** Overrides how the annotated PNG is handed to the user (e.g. the artifact downloads capability). */
+  onDownload?: (filename: string, png: Blob) => Promise<void>;
 }
 
-export function ChartAnnotator({ analysisId, analysis, imageIndex, src, width, height, label }: Props) {
+export function ChartAnnotator({ analysisId, analysis, imageIndex, src, width, height, label, onDownload }: Props) {
   const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(LAYERS.map((l) => [l.key, true])));
   const [show, setShow] = useState(true);
   const [manual, setManual] = useState<CalibrationInput | null>(() => loadManual(analysisId, imageIndex));
@@ -165,9 +167,15 @@ export function ChartAnnotator({ analysisId, analysis, imageIndex, src, width, h
     await overlay.decode();
     ctx.drawImage(overlay, 0, 0, width, height);
     URL.revokeObjectURL(url);
+    const filename = `annotated-${analysis.symbol ?? "chart"}-${label ?? imageIndex}.png`;
+    if (onDownload) {
+      const png = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+      if (png) await onDownload(filename, png);
+      return;
+    }
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = `annotated-${analysis.symbol ?? "chart"}-${label ?? imageIndex}.png`;
+    a.download = filename;
     a.click();
   };
 
