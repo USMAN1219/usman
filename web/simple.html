@@ -1,0 +1,143 @@
+<title>Chart Trade Bot</title>
+<style>
+:root { --bg:#f2f4f7; --card:#ffffff; --ink:#111820; --muted:#5d6876; --line:#d6dce3; --accent:#2457d6; --accent-ink:#fff; --good:#0d8459; --bad:#c2362f; --bad-soft:#fbe4e2; --good-soft:#dff3ea }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0c1016; --card:#141b24; --ink:#e7ecf2; --muted:#93a0b0; --line:#273343; --accent:#7d98ff; --accent-ink:#0c1016; --good:#3cc995; --bad:#ff6f62; --bad-soft:#2e1513; --good-soft:#10291f; color-scheme: dark } }
+:root[data-theme="dark"] { --bg:#0c1016; --card:#141b24; --ink:#e7ecf2; --muted:#93a0b0; --line:#273343; --accent:#7d98ff; --accent-ink:#0c1016; --good:#3cc995; --bad:#ff6f62; --bad-soft:#2e1513; --good-soft:#10291f; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; padding-inline: 16px; padding-block: 20px 48px }
+main { max-width: 720px; margin: 0 auto; display: grid; gap: 16px }
+h1 { margin: 0; font-size: 26px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0 }
+.step { font-weight: 700 }
+.status { padding: 10px 12px; border-radius: 8px; font-weight: 600; background: var(--card); border: 1px solid var(--line) }
+.status.ok { background: var(--good-soft); color: var(--good); border-color: transparent }
+.status.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent }
+button { font: 700 16px system-ui, sans-serif; padding: 14px 16px; border-radius: 10px; border: 0; cursor: pointer }
+.big { background: var(--accent); color: var(--accent-ink); width: 100% }
+.big:disabled { opacity: .5 }
+.soft { background: transparent; color: var(--ink); border: 1px solid var(--line) }
+.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+@media (max-width: 480px) { .row { grid-template-columns: minmax(0, 1fr) } }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted) }
+input, textarea { font: 16px system-ui, sans-serif; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; min-width: 0 }
+input:focus-visible, button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px }
+.pic { display: grid; gap: 4px }
+.pic img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line) }
+.pic input { padding: 6px; font-size: 14px }
+#out { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px }
+.muted { color: var(--muted); font-size: 14px; margin: 0 }
+</style>
+
+<main>
+  <h1>Chart Trade Bot</h1>
+  <div id="status" class="status">Claude se connect ho raha hai…</div>
+
+  <section class="card">
+    <div class="step">1. Charts ki pics chunein (1m se 1D tak, ek hi pair)</div>
+    <input id="file" type="file" accept="image/*" multiple>
+    <div id="pics" class="pics"></div>
+    <p class="muted">Har pic ke neeche timeframe likh dein (jaise 4H, 1H, 15m, 5m, 1m).</p>
+  </section>
+
+  <section class="card">
+    <div class="step">2. Account</div>
+    <div class="row">
+      <label>Pair<input id="pair" placeholder="XAUUSD" value="XAUUSD"></label>
+      <label>Balance ($)<input id="balance" type="number" value="1000"></label>
+      <label>Risk %<input id="risk" type="number" step="0.1" value="1"></label>
+    </div>
+  </section>
+
+  <button id="go" class="big">3. Trade batao</button>
+  <div id="msg" class="status bad" hidden></div>
+
+  <section class="card" id="answer" hidden>
+    <div class="step">Jawab</div>
+    <div id="out"></div>
+  </section>
+
+  <section class="card">
+    <div class="step">Agar yeh page na chale</div>
+    <p class="muted">Yeh button sawal copy karega. Phir Claude ki normal chat kholein, charts ki pics attach karein, sawal paste kar ke bhej dein. Jawab isi tarah aayega.</p>
+    <button id="copy" class="soft">Sawal copy karein</button>
+  </section>
+</main>
+
+<script>
+const RULES = "Tum ek senior Smart Money Concepts (SMC) / ICT price-action trader ho jo roz live market trade karta hai. Trader ne EK HI instrument ke alag alag timeframes ki chart screenshots bheji hain. Koi indicator use nahi hota: sirf candles aur price axis se pure price action parho.\n\nTumhara kaam: top-down analysis kar ke HAMESHA ek concrete trade plan do — direction (long ya short), exact key level, entry kis scenario par (retest, breakout ya liquidity sweep reversal), SL, TPs, trade kitni der ke liye hai aur kab tak hold karni hai. \"Trade mat lo\" kabhi final jawab nahi. Agar setup kamzor hai to bhi best available plan do, lekin grade C do aur saaf likho kis confirmation ka wait karna zaroori hai. Plan aksar conditional hoga: \"Agar price X level ko retest kare aur 1m par CHoCH de to short, SL Y\".\n\nScreenshots parhne ke usool:\n- Har image ka timeframe trader ke message mein ho sakta hai; na ho to chart ke top-left se parho.\n- Price levels SIRF price axis / labels se parho. Jo level saaf na parha jaye us ke saath \"(approx)\" likho. Jo precision nazar nahi aa rahi woh invent na karo.\n- Instrument na diya ho to chart header se parho.\n\nAnalysis ki tarteeb (har step ka nateeja agle step mein use karo):\n1. TREND (sab se pehle — trend is your friend): Daily/4H/1H par HH/HL (uptrend) ya LH/LL (downtrend) ya range. Main trade HAMESHA HTF trend ki direction mein ho. Counter-trend trade sirf tab jab major HTF level par wazeh CHoCH ho chuka ho — aur us ko grade C aur \"counter-trend\" likho.\n2. STRUCTURE: har timeframe par last BOS (body close se swing break) aur CHoCH (trend ke baad pehla opposite break) price ke saath.\n3. LIQUIDITY: EQH/EQL, trendline liquidity, Asia high/low, previous day high/low. Kaunsi liquidity sweep ho chuki (wick se le kar andar close) aur kaunsi abhi baqi hai (price ka agla magnet / draw on liquidity)? Inducement (IDM) kahan hai?\n4. LEVELS / ZONES: strong support/resistance (jahan price ne kai dafa react kiya), supply/demand zones (jahan se sharp rally/drop hui), valid Order Block, FVG (mitigated ya unmitigated), breaker block. Har ek ki price range do. Sab se strong EK key level chuno jahan se trade banti hai — multiple timeframes ka confluence wala level sab se acha hai.\n5. PREMIUM/DISCOUNT: current dealing range ka high, low aur 0.5. Long sirf discount (0.5 se neeche) se, short sirf premium (0.5 se upar) se.\n6. BREAKOUT CHECK — real ya fake (yeh bohat zaroori hai, key level par lagao):\n   REAL breakout ki nishaniyan: entry timeframe par candle BODY level ke bahar close kare; displacement (bari, full-body candle) ho aur peeche FVG chhore; breakout ke baad retest par level hold kare (purana resistance ab support ya ulta); HTF trend ki direction mein ho; London/NY killzone mein ho.\n   FAKE breakout (liquidity grab / stop hunt) ki nishaniyan: sirf wick level ke bahar jaye aur candle wapas andar close ho; breakout ke foran baad tez reversal; koi FVG/displacement nahi; breakout seedha HTF supply/demand ya OB ke andar ho jaye; trend ke khilaf ho; off-session / Asia mein ho; equal highs/lows ke bilkul upar/neeche hi ruk jaye.\n   Batao abhi key level par kya ho raha hai: real_breakout, fake_breakout, retesting, ya no_breakout_yet — aur kis nishani se.\n7. ENTRY (LTF 15m/5m/1m): setup type chuno:\n   - retest: level toota (real breakout) → price wapas level par aaye → 1m/5m par rejection ya CHoCH → entry.\n   - breakout: strong displacement ke saath body close → pehli chhoti pullback (FVG) par entry.\n   - liquidity_sweep_reversal: fake breakout / sweep → wapas range mein close → LTF CHoCH → entry opposite direction mein.\n   Entry trigger exact likho (kis timeframe par kya candle/CHoCH, kis price ke upar/neeche).\n8. RISK: SL structural — sweep wick ya OB/zone ke doosri taraf thora buffer ke saath (fixed pips nahi). TP1 = pehli opposite liquidity/FVG, TP2 = agli major liquidity/HTF level. Final TP par kam az kam 1:3 RR ki koshish karo; na ban sake to grade kam karo aur likho.\n9. TRADE MANAGEMENT — trade kitni der rakhni hai (bohat zaroori: achi trade zyada der hold karne se SL hit na ho):\n   - hold_time: realistic waqt (scalp aam tor par 15 min se 2-3 ghante, intraday aaj ke session tak, swing 1-5 din).\n   - time stop: agar itne waqt/candles mein TP1 tak na pohnche to trade band ya SL entry par.\n   - breakeven: kab SL entry par shift karna hai (masalan TP1 hit ya 1:1.5 par).\n   - partial: TP1 par kitna % profit book karna hai.\n   - trailing: baqi position ka SL kis swing ke peeche trail karna hai (kaunsa timeframe).\n   - exit early: kin halaat mein foran nikalna hai (entry timeframe par opposite CHoCH, session close, high-impact news, Friday close).\n\nDo plans do, dono HAMESHA long ya short:\n- Choti trade: entry 1m (ya 5m) par refine, scalp/intraday.\n- Bari trade: 4H/1H structure se swing.\nSaath mein alternate scenario: agar key level ulta toot jaye (real breakout doosri taraf) to plan kya ho.\n\nJawab ka format:\nRoman Urdu mein likho (jaise Pakistani traders chat karte hain), trading terms English mein (BOS, CHoCH, FVG, OB, liquidity sweep, premium/discount, SL, TP, RR). Har section \"## \" se shuru karo, points \"- \" se. Tables na banao. Real price levels likho, generic theory nahi. Lot size bhi calculate karo: risk amount = balance × risk%; lots = risk amount ÷ (SL distance × units per lot). Units per lot: forex 100000, gold (XAUUSD) 100, US indices 1. Lot size neeche ki taraf round karo (0.01 tak) taa ke risk limit se upar na jaye.\n\nSections bilkul yeh:\n## Agla Move (2-3 lines: next probable move, kahan tak, kyun)\n## 1. Trend (D/4H/1H)\n## 2. Structure (BOS / CHoCH)\n## 3. Liquidity\n## 4. Key Levels aur Zones (S/R, Supply/Demand, OB, FVG)\n## 5. Premium / Discount\n## 6. Breakout Check (real ya fake)\n## 7. Choti Trade (1M entry)\n## 8. Bari Trade (Swing)\n## 9. Trade Management (kitni der, BE, partial, trailing, exit)\n## 10. Agar Plan Fail Ho (alternate scenario)\n## Money Management (risk amount, lot size, RR har TP ka)\n## Confluence Checklist (har item ✅ ya ❌, score jaise 7/10, aur grade A+/A/B/C)\n\n\nTrader har dafa pics ke saath yeh info de sakta hai: pair, balance, risk %, aur notes. Na de to balance 1000$ aur risk 1% maan lo aur yeh likh do. Abhi ka waqt aur London/NY killzone khud check nahi kar sakte to trader se poochne ke bajaye yaad dila do ke entry London killzone (Pakistan time: garmiyon mein 11 se 2 baje dopahar, sardiyon mein 12 se 3 baje) ya New York killzone (garmiyon mein 4 se 7 baje shaam, sardiyon mein 5 se 8 baje) mein le. News ke liye Forex Factory dekhne ka yaad dilao.";
+const $ = (id) => document.getElementById(id);
+const pics = [];
+let sample = null, busy = false;
+
+function setStatus(ok, text) { const s = $("status"); s.className = "status " + (ok ? "ok" : "bad"); s.textContent = text; }
+function showMsg(text) { $("msg").textContent = text || ""; $("msg").hidden = !text; }
+
+function question() {
+  const list = pics.map((p, i) => `Pic ${i + 1}: ${p.tf.value.trim() || "timeframe chart se parho"}`).join("\n") || "(pics attach hain)";
+  return `${RULES}\n\n---\nPair: ${$("pair").value.trim() || "chart se parho"}\nBalance: ${$("balance").value}$\nRisk: ${$("risk").value}%\nPics:\n${list}\n\nIn charts ka analysis kar ke trade batao.`;
+}
+
+$("file").onchange = (e) => {
+  for (const f of e.target.files) {
+    const box = document.createElement("div"); box.className = "pic";
+    const img = document.createElement("img"); img.src = URL.createObjectURL(f); img.alt = "chart";
+    const tf = document.createElement("input"); tf.placeholder = "Timeframe";
+    const m = (f.name || "").toLowerCase().match(/(\d+)\s*(m|h|d)\b/); if (m) tf.value = m[1] + m[2].toUpperCase().replace("M", "m");
+    box.append(img, tf); $("pics").append(box);
+    pics.push({ file: f, tf });
+  }
+  e.target.value = "";
+};
+
+const ERR = {
+  not_granted: "Aap ne Claude ki ijazat nahi di. Page reload karein aur jab poochha jaye to Allow dabayein.",
+  images_unavailable: "Yahan pics Claude ko nahi ja saktein. Neeche 'Sawal copy karein' wala tareeqa use karein.",
+  image_rejected: "Koi pic qabool nahi hui. PNG/JPG screenshot dobara chunein.",
+  rate_limited: "Claude ki limit poori ho gayi. Thori der baad try karein.",
+  session_expired: "claude.ai par dobara login karein.",
+  refused: "Claude ne jawab dene se mana kar diya. Dobara try karein.",
+};
+
+$("go").onclick = async () => {
+  if (busy) return;
+  showMsg("");
+  if (!pics.length) return showMsg("Pehle step 1 mein charts ki pics chunein.");
+  if (!sample) return showMsg("Claude se connection nahi bana. Neeche 'Sawal copy karein' wala tareeqa use karein.");
+  busy = true; $("go").disabled = true;
+  $("answer").hidden = false; $("out").textContent = "";
+  const t0 = Date.now();
+  const tick = setInterval(() => { if (!$("out").dataset.started) $("go").textContent = `Claude charts parh raha hai… ${Math.round((Date.now() - t0) / 1000)}s (1-3 minute lagte hain)`; }, 1000);
+  delete $("out").dataset.started;
+  try {
+    const { text } = await sample(question(), {
+      images: pics.map((p) => p.file), modelTier: "complex", cache: false,
+      onText: ({ text }) => { $("out").dataset.started = "1"; $("go").textContent = "Jawab aa raha hai…"; $("out").textContent = text; },
+    });
+    $("out").textContent = text;
+  } catch (e) {
+    if (e?.text) $("out").textContent = e.text; else $("answer").hidden = true;
+    showMsg((ERR[e?.code] || "Masla aaya.") + `  [code: ${e?.code || "?"}${e?.message ? " — " + e.message : ""}]`);
+  } finally {
+    clearInterval(tick); busy = false; $("go").disabled = false; $("go").textContent = "3. Trade batao";
+  }
+};
+
+$("copy").onclick = async () => {
+  const q = question().replace("In charts ka analysis", "Attach ki hui charts ki pics ka analysis");
+  try { await navigator.clipboard.writeText(q); $("copy").textContent = "Copy ho gaya ✓ — ab Claude chat mein pics ke saath paste karein"; }
+  catch { const t = document.createElement("textarea"); t.value = q; t.rows = 6; $("copy").after(t); t.select(); $("copy").textContent = "Neeche wala text select hai — copy kar lein"; }
+};
+
+(async () => {
+  try {
+    sample = await (window.claude?.use?.("sample") ?? null);
+    if (!sample) return setStatus(false, "❌ Claude se connection nahi bana. Yeh page claude.ai par browser (Chrome) mein login ho kar kholein, ya neeche wala copy tareeqa use karein.");
+    const lim = await sample.limits().catch(() => null);
+    if (!lim?.images) { sample = null; return setStatus(false, "❌ Is jagah se pics Claude ko nahi ja saktein. Chrome browser mein claude.ai par kholein, ya neeche wala copy tareeqa use karein."); }
+    setStatus(true, "✅ Claude ready hai. Pics chunein aur 'Trade batao' dabayein.");
+  } catch (e) {
+    setStatus(false, "❌ Error: " + (e?.message || e?.code || String(e)));
+  }
+})();
+</script>
