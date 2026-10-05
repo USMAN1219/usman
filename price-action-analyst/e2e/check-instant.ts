@@ -28,8 +28,8 @@ const stub = (answer: unknown, opts: { limitsFail?: boolean; noSample?: boolean;
       if (${!!opts.noSample}) return null;
       const fn = async () => ({ text: "" });
       fn.json = async (input, opts) => {
-        if (${!!opts.noImages}) throw { code: "images_unavailable", message: "no images" };
-        window.__calls.push({ len: input.length, images: opts.images.length, tier: opts.modelTier });
+        if (${!!opts.noImages} && opts.images) throw { code: "images_unavailable", message: "no images" };
+        window.__calls.push({ len: input.length, images: opts.images ? opts.images.length : 0, tier: opts.modelTier, hasCandles: input.includes("Columns: x,open,high,low,close") });
         await new Promise((r) => setTimeout(r, 1500));
         opts.onText({ text: "{", delta: "{" });
         return ${JSON.stringify(answer)};
@@ -136,9 +136,29 @@ try {
     await p4.locator("#chart-files").setInputFiles(["e2e/output/charts/XAUUSD_15m.png"]);
     await p4.locator(".thumb").first().waitFor();
     await p4.getByRole("button", { name: "Analyse charts" }).click();
-    await p4.getByText("This Claude view can't send images from a page.").waitFor();
-    assert.match(await p4.locator("#chat-instructions").inputValue(), /13. Final Decision/);
-    await p4.screenshot({ path: path.join(out, "5-no-images-fallback.png"), fullPage: false });
+    await p4.getByText("Read the candles (works in every Claude view)").waitFor();
+    // Tap the 110.00 label (top) and the 101.00 label (bottom) on the synthetic chart's price axis.
+    const box = (await p4.locator(".calib svg.overlay").first().boundingBox())!;
+    const tapAt = async (fy: number, price: string) => {
+      await p4.mouse.click(box.x + 0.925 * box.width, box.y + fy * box.height);
+      await p4.locator("#cal-price-0").fill(price);
+      await p4.getByRole("button", { name: "OK" }).click();
+    };
+    await tapAt(0.1, "110");
+    await tapAt(0.82, "101");
+    await p4.getByText("✓ 110 candles read").waitFor();
+    const last = Number((await p4.locator(".calib .badge").first().innerText()).match(/last ([\d.]+)/)![1]);
+    assert.ok(Math.abs(last - 104.32) < 0.05, `last close read as ${last}, chart shows 104.32`);
+    await p4.screenshot({ path: path.join(out, "5-read-candles.png") });
+    await p4.getByRole("button", { name: "Analyse charts" }).click();
+    await p4.getByRole("button", { name: "Delete" }).waitFor();
+    const c4calls = await p4.evaluate(() => (window as any).__calls);
+    const textCall = c4calls.at(-1);
+    assert.equal(textCall.images, 0);
+    assert.ok(textCall.hasCandles, "candle table sent as text");
+    assert.match(await p4.locator(".report-head").innerText(), /measured from your screenshots/);
+    assert.ok((await p4.locator(".annotator svg.overlay g").count()) > 5, "levels drawn using the user's calibration");
+    await p4.screenshot({ path: path.join(out, "6-text-mode-result.png") });
     await c4.close();
   }
   console.log("Instant page check passed:", out);

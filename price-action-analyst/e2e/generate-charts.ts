@@ -31,7 +31,7 @@ interface Candle {
   c: number;
 }
 
-function series(seed: number, n: number, noise: number): Candle[] {
+export function series(seed: number, n: number, noise: number): Candle[] {
   const r = rng(seed);
   // Anchor path: rally to 108.6, pull back, sweep 100.9, recover to ~104.2.
   const anchors = [

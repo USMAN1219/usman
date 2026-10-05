@@ -15,7 +15,8 @@ import { ChartAnnotator } from "../components/ChartAnnotator.tsx";
 import { Disclaimer } from "../components/Disclaimer.tsx";
 import { guessTimeframe, newId, prepareImage, type PreparedImage } from "../lib/compress.ts";
 import { fmtDate, fmtRr } from "../lib/format.ts";
-import { AnalyseError, analyseCharts, getDownloads, getSample, type DownloadsNs, type SampleFn } from "./bridge.ts";
+import { Calibrator, type CalibratedChart } from "./Calibrator.tsx";
+import { AnalyseError, analyseChartData, analyseCharts, getDownloads, getSample, type DownloadsNs, type SampleFn } from "./bridge.ts";
 import exampleChart from "./example-chart.png?inline";
 import { deleteAnalysis, listAnalyses, loadSettings, saveAnalysis, saveSettings, type InstantSettings, type SavedAnalysis } from "./store.ts";
 
@@ -141,6 +142,8 @@ export function InstantApp() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noImages, setNoImages] = useState(false);
+  /** Per-screenshot calibration + measured candles, used when the view can't send images. */
+  const [calib, setCalib] = useState<Record<string, CalibratedChart | null>>({});
   const [running, setRunning] = useState<{ started: number; chars: number } | null>(null);
   const [now, setNow] = useState(Date.now());
   const ctl = useRef<AbortController | null>(null);
@@ -215,6 +218,11 @@ export function InstantApp() {
       setError("Claude is not available in this view. Open the link in the Claude app or on claude.ai while signed in, then try again.");
       return;
     }
+    const dataMode = noImages || imagesOk === false;
+    if (dataMode && items.some((i) => !calib[i.id])) {
+      setError("Your view can't send pictures, so the bot reads the candles itself: on each chart below, tap two price labels and type their prices. Then press Analyse.");
+      return;
+    }
     const sym = normalizeSymbol(symbol);
     const pv = pointValue.trim() ? Number(pointValue) : null;
     let s = settings;
@@ -226,15 +234,45 @@ export function InstantApp() {
     ctl.current = new AbortController();
     setRunning({ started: Date.now(), chars: 0 });
     try {
-      const result = await analyseCharts(sample, {
-        images: items.map((i) => ({ file: i.file, label: i.label, width: i.width, height: i.height })),
+      const common = {
         symbol: sym,
         notes: notes.trim() || null,
         minRr: s.minRr,
         deep,
         signal: ctl.current.signal,
-        onProgress: (chars) => setRunning((r) => (r ? { ...r, chars } : r)),
-      });
+        onProgress: (chars: number) => setRunning((r) => (r ? { ...r, chars } : r)),
+      };
+      const result = dataMode
+        ? await analyseChartData(sample, {
+            ...common,
+            charts: items.map((i) => ({ label: i.label, candles: calib[i.id]!.candles })),
+            dims: items.map((i) => ({ width: i.width, height: i.height })),
+          })
+        : await analyseCharts(sample, { ...common, images: items.map((i) => ({ file: i.file, label: i.label, width: i.width, height: i.height })) });
+      if (dataMode) {
+        // The user's own calibration places the drawings; the price scale was readable by construction.
+        result.calibrations = items.map((i, idx) => {
+          const c = calib[i.id]!.cal;
+          return { image_index: idx, y1: c.y1, price1: c.price1, y2: c.y2, price2: c.price2, plot_left: 0, plot_right: c.plotRight, scale: "linear" as const, confidence: "high" as const };
+        });
+        result.charts = items.map((i, idx) => {
+          const prev = result.charts.find((c) => c.image_index === idx);
+          return {
+            image_index: idx,
+            detected_symbol: prev?.detected_symbol ?? sym,
+            detected_timeframe: i.label ?? prev?.detected_timeframe ?? null,
+            timeframe_source: i.label ? ("user_label" as const) : (prev?.timeframe_source ?? "unknown"),
+            price_scale_readable: true,
+            current_price: calib[i.id]!.candles.at(-1)?.c ?? null,
+            usable: true,
+            issues: prev?.issues ?? [],
+          };
+        });
+        result.readability_issues = [
+          "Candles were measured from your screenshots by the page (this view can't send pictures to Claude). Check the yellow-line preview matched your candles.",
+          ...result.readability_issues,
+        ];
+      }
       const finalSymbol = sym ?? normalizeSymbol(result.symbol);
       const derived = applyGuardrails({ analysis: result, settings: s, pointValue: finalSymbol ? (s.pointValues[finalSymbol] ?? null) : null });
       const saved: SavedAnalysis = {
@@ -250,6 +288,7 @@ export function InstantApp() {
       setHistory((h) => [saved, ...h]);
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       setItems([]);
+      setCalib({});
       setNotes("");
       setView({ name: "result", id: saved.id });
     } catch (e) {
@@ -257,6 +296,7 @@ export function InstantApp() {
       if (msg.includes("images_unavailable")) {
         setNoImages(true);
         setImagesOk(false);
+        setError("Your view can't send pictures to Claude, so the bot will read the candles itself: on each chart below, tap two price labels and type their prices. Then press Analyse again.");
       } else setError(msg);
     } finally {
       setRunning(null);
@@ -381,7 +421,34 @@ export function InstantApp() {
               model)
             </label>
             {items.length === 1 && <p className="small muted">Only one timeframe: higher-timeframe confirmation will be unavailable.</p>}
-            {(noImages || (sample && imagesOk === false)) && <ChatFallback />}
+            {(noImages || (sample && imagesOk === false)) && items.length > 0 && (
+              <div className="data-mode">
+                <div>
+                  <strong>Read the candles (works in every Claude view)</strong>
+                  <p className="small muted">
+                    This view can't send pictures to Claude, so the bot measures the candles on your phone and sends Claude the prices. For each chart: tap a
+                    price label near the top of the price axis and type its price, then one near the bottom.
+                  </p>
+                </div>
+                {items.map((it, idx) => (
+                  <Calibrator
+                    key={it.id}
+                    index={idx}
+                    label={it.label}
+                    src={it.previewUrl}
+                    file={it.file}
+                    width={it.width}
+                    height={it.height}
+                    value={calib[it.id] ?? null}
+                    onChange={(v) => setCalib((c) => ({ ...c, [it.id]: v }))}
+                  />
+                ))}
+                <details>
+                  <summary className="small">Other option: use the analyst in a normal Claude chat</summary>
+                  <ChatFallback />
+                </details>
+              </div>
+            )}
             {error && <div className="alert error small">{error}</div>}
             {running ? (
               <div className="progress-row">
@@ -542,7 +609,6 @@ function ChatFallback() {
   const [copied, setCopied] = useState<"yes" | "select" | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => box.current?.scrollIntoView({ behavior: "smooth", block: "center" }), []);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(CHAT_INSTRUCTIONS);
