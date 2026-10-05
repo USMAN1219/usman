@@ -271,6 +271,9 @@ const EXAMPLE = {
 
 // ---------- app ----------
 export function startApp(adapter) {
+  // Any script error is shown on the page so a screenshot tells what went wrong.
+  window.addEventListener("error", (e) => showError("Page error: " + (e.message || "unknown")));
+  window.addEventListener("unhandledrejection", (e) => showError("Page error: " + (e.reason?.message || e.reason?.code || String(e.reason))));
   const state = { charts: [], maxImages: 10, ready: false, blocked: "Claude se connection ho raha hai… 10 second ruk kar dobara dabayein.", ctl: null, raw: "" };
 
   const SETTINGS = ["pair", "balance", "risk", "contract"];
@@ -388,6 +391,10 @@ export function startApp(adapter) {
       if (accept) $("file").accept = accept;
       $("limitTxt").textContent = `Ek analysis mein ${state.maxImages} pics tak`;
       if (note !== undefined) showError(note);
+      const chip = $("connChip");
+      chip.className = "chip " + (ready ? "on" : "st-bear");
+      chip.textContent = ready ? "Claude: ready" : "Claude: connect nahi hua";
+      chip.title = ready ? "" : (note || state.blocked);
       updateGo();
     },
     showError,
