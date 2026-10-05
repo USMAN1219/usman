@@ -77,12 +77,12 @@ const app = startApp({
 
 // ---------- settings: API key + model ----------
 function refresh() {
-  const hasKey = $("apiKey").value.trim().startsWith("sk-ant-");
+  const hasKey = $("apiKey").value.trim().length > 20;
   $("keyState").textContent = hasKey ? "Key set hai" : "Key nahi";
   $("keyState").className = "chip " + (hasKey ? "on" : "off");
   app.setReady(hasKey, {
     maxImages: MAX_IMAGES, accept: "image/png,image/jpeg,image/webp,image/gif",
-    note: hasKey ? "" : "Shuru karne ke liye neeche Settings mein apni Anthropic API key daalein.",
+    note: hasKey ? "" : "Pehle upar Settings kholein aur apni Anthropic API key (sk-ant-...) daalein.",
   });
   $("settings").open ||= !hasKey;
 }

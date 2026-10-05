@@ -250,7 +250,10 @@ function renderTrade(trade, charts = []) {
   drawMap(trade, charts, scalpSized);
 }
 
-function showError(msg) { $("errBox").textContent = msg || ""; $("errBox").hidden = !msg; }
+function showError(msg) {
+  // shown both in the results column and right under the button (the results column is far below on phones)
+  for (const id of ["errBox", "goHint"]) { $(id).textContent = msg || ""; $(id).hidden = !msg; }
+}
 
 // ---------- example shown on first load ----------
 const EXAMPLE = {
@@ -268,7 +271,7 @@ const EXAMPLE = {
 
 // ---------- app ----------
 export function startApp(adapter) {
-  const state = { charts: [], maxImages: 10, ready: false, ctl: null, raw: "" };
+  const state = { charts: [], maxImages: 10, ready: false, blocked: "Claude se connection ho raha hai… 10 second ruk kar dobara dabayein.", ctl: null, raw: "" };
 
   const SETTINGS = ["pair", "balance", "risk", "contract"];
   const saved = store.get("smc-settings", {});
@@ -286,7 +289,8 @@ export function startApp(adapter) {
   renderClock();
   setInterval(renderClock, 30000);
 
-  const updateGo = () => { $("go").disabled = !state.ready || !state.charts.length || !!state.ctl; };
+  // The button only greys out while an analysis runs; otherwise a click explains what is missing.
+  const updateGo = () => { $("go").disabled = !!state.ctl; };
 
   function addFiles(files) {
     for (const f of files) {
@@ -327,7 +331,9 @@ export function startApp(adapter) {
   renderTrade(EXAMPLE);
 
   $("go").onclick = async () => {
-    if (!state.ready || !state.charts.length) return;
+    if (state.ctl) return;
+    if (!state.ready) return showError(state.blocked);
+    if (!state.charts.length) return showError("Pehle charts ki screenshots daalein (upar wale dabbe par click karein ya pic drag karein).");
     const charts = [...state.charts].sort((a, b) => (a.tf ? TF.indexOf(a.tf) : 99) - (b.tf ? TF.indexOf(b.tf) : 99));
     const ctl = new AbortController();
     state.ctl = ctl;
@@ -377,6 +383,7 @@ export function startApp(adapter) {
   return {
     setReady(ready, { maxImages, accept, note } = {}) {
       state.ready = ready;
+      if (!ready && note) state.blocked = note;
       if (maxImages) state.maxImages = maxImages;
       if (accept) $("file").accept = accept;
       $("limitTxt").textContent = `Ek analysis mein ${state.maxImages} pics tak`;
