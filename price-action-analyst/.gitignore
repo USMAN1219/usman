@@ -1,0 +1,11 @@
+node_modules
+dist
+.data
+.env
+.env.*
+!.env.example
+.netlify
+coverage
+e2e/output
+*.log
+.tsbuild
