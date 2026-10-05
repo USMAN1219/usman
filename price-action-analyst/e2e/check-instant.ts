@@ -21,10 +21,11 @@ const wire: any = mockAnalysis({ images: [{ data: new Uint8Array(), mime: "image
 wire.setup.tp3 = -1;
 wire.levels.forEach((l: any) => (l.price_high = -1));
 
-const stub = (answer: unknown) => `
+const stub = (answer: unknown, opts: { limitsFail?: boolean; noSample?: boolean } = {}) => `
   window.__calls = [];
   window.claude = { use: async (name) => {
     if (name === "sample") {
+      if (${!!opts.noSample}) return null;
       const fn = async () => ({ text: "" });
       fn.json = async (input, opts) => {
         window.__calls.push({ len: input.length, images: opts.images.length, tier: opts.modelTier });
@@ -32,7 +33,7 @@ const stub = (answer: unknown) => `
         opts.onText({ text: "{", delta: "{" });
         return ${JSON.stringify(answer)};
       };
-      fn.limits = async () => ({ maxPromptBytes: 262144, images: { maxCount: 5, maxInputBytes: 20000000, mediaTypes: ["image/png","image/jpeg","image/webp"] } });
+      fn.limits = ${opts.limitsFail ? 'async () => { throw { code: "capability_removed" }; }' : 'async () => ({ maxPromptBytes: 262144, images: { maxCount: 5, maxInputBytes: 20000000, mediaTypes: ["image/png","image/jpeg","image/webp"] } })'};
       return fn;
     }
     if (name === "downloads") return { save: async () => ({ status: "saved" }) };
@@ -98,6 +99,33 @@ try {
     await page.screenshot({ path: path.join(out, `4-phone-${theme}.png`) });
   }
   assert.deepEqual(errors, []);
+
+  // Edge cases: the Analyse button must always respond.
+  {
+    const c2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await c2.addInitScript(stub(wire, { limitsFail: true }));
+    const p2 = await c2.newPage();
+    await p2.goto(URL_);
+    await p2.getByText("Connected to Claude").waitFor();
+    await p2.getByRole("button", { name: "Analyse charts" }).click();
+    await p2.getByText("Add at least one chart screenshot first").waitFor();
+    await p2.locator("#chart-files").setInputFiles(["e2e/output/charts/XAUUSD_15m.png"]);
+    await p2.locator(".thumb").first().waitFor();
+    await p2.getByRole("button", { name: "Analyse charts" }).click();
+    await p2.getByRole("button", { name: "Delete" }).waitFor(); // analysed even though limits() failed
+    await c2.close();
+
+    const c3 = await browser.newContext();
+    await c3.addInitScript(stub(wire, { noSample: true }));
+    const p3 = await c3.newPage();
+    await p3.goto(URL_);
+    await p3.getByText("Claude not available in this view").waitFor();
+    await p3.locator("#chart-files").setInputFiles(["e2e/output/charts/XAUUSD_15m.png"]);
+    await p3.locator(".thumb").first().waitFor();
+    await p3.getByRole("button", { name: "Analyse charts" }).click();
+    await p3.getByText("Claude is not available in this view. Open the link").waitFor();
+    await c3.close();
+  }
   console.log("Instant page check passed:", out);
 } finally {
   await browser.close();

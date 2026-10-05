@@ -19,3 +19,7 @@
 @media (max-width: 720px) {
   .history-row { grid-template-columns: 1fr; }
 }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); vertical-align: middle; }
+.status-dot.ok { background: var(--long); }
+.status-dot.bad { background: var(--short); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

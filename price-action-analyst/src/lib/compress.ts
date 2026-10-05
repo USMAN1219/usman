@@ -37,17 +37,19 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) 
 }
 
 export async function prepareImage(file: File, maxBytes: number): Promise<PreparedImage> {
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error(`${file.name}: only PNG, JPEG or WebP screenshots are supported.`);
+  // Some phones report an empty or unusual type; decode anything the browser can read and re-encode it.
+  if (file.type && !file.type.startsWith("image/")) throw new Error(`${file.name}: that is not an image. Upload a chart screenshot.`);
   const bitmap = await createImageBitmap(file).catch(() => {
-    throw new Error(`${file.name}: the image could not be decoded.`);
+    throw new Error(`${file.name}: this image format could not be read. Take a normal screenshot (PNG or JPEG) and try again.`);
   });
+  const supported = /^image\/(png|jpeg|webp)$/.test(file.type);
   const { width, height } = bitmap;
   const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
 
   let out: File = file;
   let outW = width;
   let outH = height;
-  if (scale < 1 || file.size > maxBytes) {
+  if (scale < 1 || file.size > maxBytes || !supported) {
     outW = Math.round(width * scale);
     outH = Math.round(height * scale);
     const canvas = document.createElement("canvas");

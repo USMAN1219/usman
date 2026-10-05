@@ -89,7 +89,8 @@ export async function analyseCharts(sample: SampleFn, input: AnalyseInput): Prom
   } catch (e) {
     const err = e as SampleError;
     if (err?.code === "cancelled") throw new AnalyseError("Stopped.");
-    throw new AnalyseError(ERROR_COPY[err?.code] ?? ERROR_COPY.upstream_error!);
+    const code = err?.code ?? "unknown";
+    throw new AnalyseError(`${ERROR_COPY[code] ?? ERROR_COPY.upstream_error!} (code: ${code})`);
   }
   const parsed = ChartAnalysisSchema.safeParse(fromWire(ChartAnalysisSchema, wire));
   if (!parsed.success) throw new AnalyseError(ERROR_COPY.invalid_json!);

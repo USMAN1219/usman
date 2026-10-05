@@ -125,7 +125,8 @@ export function InstantApp() {
   const [sample, setSample] = useState<SampleFn | null | undefined>(undefined);
   const [downloads, setDownloads] = useState<DownloadsNs | null>(null);
   const [maxImages, setMaxImages] = useState(6);
-  const [imagesOk, setImagesOk] = useState(true);
+  /** true = view reports image support, false = it reports none, null = unknown (try anyway). */
+  const [imagesOk, setImagesOk] = useState<boolean | null>(null);
   const [settings, setSettings] = useState<InstantSettings>(loadSettings);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const [example, setExample] = useState<SavedAnalysis | null>(null);
@@ -148,8 +149,9 @@ export function InstantApp() {
       setSample(() => s); // sample is a function: wrap it so React stores it instead of calling it
       if (s) {
         const lim = await s.limits().catch(() => null);
-        setImagesOk(!!lim?.images);
-        if (lim?.images) setMaxImages(Math.min(6, lim.images.maxCount));
+        // Only a definite "no images" answer counts; if limits can't be read, let the call try.
+        setImagesOk(lim ? !!lim.images : null);
+        if (lim?.images) setMaxImages(Math.min(6, Math.max(1, lim.images.maxCount)));
       }
     });
     void getDownloads().then(setDownloads);
@@ -197,8 +199,20 @@ export function InstantApp() {
   });
 
   const analyse = async () => {
-    if (!sample || !items.length) return;
     setError(null);
+    // Never fail silently: say exactly why analysis can't start.
+    if (!items.length) {
+      setError("Add at least one chart screenshot first (tap the box above).");
+      return;
+    }
+    if (sample === undefined) {
+      setError("Still connecting to Claude. Wait a few seconds and tap Analyse again.");
+      return;
+    }
+    if (!sample) {
+      setError("Claude is not available in this view. Open the link in the Claude app or on claude.ai while signed in, then try again.");
+      return;
+    }
     const sym = normalizeSymbol(symbol);
     const pv = pointValue.trim() ? Number(pointValue) : null;
     let s = settings;
@@ -277,10 +291,24 @@ export function InstantApp() {
                 Live analysis works when this page is opened inside Claude (the Claude app or claude.ai). Here you can still look at the example below.
               </div>
             )}
-            {sample && !imagesOk && (
+            {sample && imagesOk === false && (
               <div className="alert warn small">This view can't send images to Claude. Open the link in the Claude app or in claude.ai in a browser.</div>
             )}
-            <div
+            <input
+              id="chart-files"
+              ref={fileRef}
+              className="visually-hidden"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) void addFiles([...e.target.files]);
+                e.target.value = "";
+              }}
+            />
+            {/* A native label opens the file picker reliably on phones, without scripted clicks. */}
+            <label
+              htmlFor="chart-files"
               className={`dropzone${dragging ? " dragging" : ""}`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -292,26 +320,10 @@ export function InstantApp() {
                 setDragging(false);
                 void addFiles([...e.dataTransfer.files]);
               }}
-              onClick={() => fileRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileRef.current?.click()}
             >
-              <input
-                id="chart-files"
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple
-                hidden
-                onChange={(e) => {
-                  if (e.target.files) void addFiles([...e.target.files]);
-                  e.target.value = "";
-                }}
-              />
               <strong>Tap to choose chart screenshots</strong>
               <span className="muted small">or drop / paste them here · up to {maxImages} timeframes · PNG, JPEG, WebP</span>
-            </div>
+            </label>
 
             {items.length > 0 && (
               <ul className="thumbs">
@@ -382,8 +394,11 @@ export function InstantApp() {
               </div>
             ) : (
               <div className="row between wrap">
-                <span className="tiny muted">Uses your own Claude usage. Claude asks once for permission.</span>
-                <button className="btn primary" disabled={!sample || !imagesOk || !items.length} onClick={() => void analyse()}>
+                <span className="tiny muted">
+                  <span className={`status-dot ${sample ? "ok" : sample === null ? "bad" : "wait"}`} aria-hidden />{" "}
+                  {sample ? "Connected to Claude" : sample === null ? "Claude not available in this view" : "Connecting to Claude…"} · uses your own Claude usage; Claude asks once for permission.
+                </span>
+                <button className="btn primary" onClick={() => void analyse()}>
                   Analyse charts
                 </button>
               </div>
