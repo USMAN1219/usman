@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { ChartAnalysis } from "../../shared/analysis-schema.ts";
 import { normalizeSymbol, type AnalysisRecord } from "../../shared/types.ts";
+import { CHAT_INSTRUCTIONS } from "../../shared/chat-instructions.ts";
 import { applyGuardrails } from "../../server/analysis/guardrails.ts";
 import { mockAnalysis } from "../../server/ai/mock.ts";
 import { AnalysisReport } from "../components/AnalysisReport.tsx";
@@ -139,6 +140,7 @@ export function InstantApp() {
   const [deep, setDeep] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noImages, setNoImages] = useState(false);
   const [running, setRunning] = useState<{ started: number; chars: number } | null>(null);
   const [now, setNow] = useState(Date.now());
   const ctl = useRef<AbortController | null>(null);
@@ -251,7 +253,11 @@ export function InstantApp() {
       setNotes("");
       setView({ name: "result", id: saved.id });
     } catch (e) {
-      setError(e instanceof AnalyseError ? e.message : "Something went wrong. Try again.");
+      const msg = e instanceof AnalyseError ? e.message : "Something went wrong. Try again.";
+      if (msg.includes("images_unavailable")) {
+        setNoImages(true);
+        setImagesOk(false);
+      } else setError(msg);
     } finally {
       setRunning(null);
     }
@@ -290,9 +296,6 @@ export function InstantApp() {
               <div className="alert warn small">
                 Live analysis works when this page is opened inside Claude (the Claude app or claude.ai). Here you can still look at the example below.
               </div>
-            )}
-            {sample && imagesOk === false && (
-              <div className="alert warn small">This view can't send images to Claude. Open the link in the Claude app or in claude.ai in a browser.</div>
             )}
             <input
               id="chart-files"
@@ -378,6 +381,7 @@ export function InstantApp() {
               model)
             </label>
             {items.length === 1 && <p className="small muted">Only one timeframe: higher-timeframe confirmation will be unavailable.</p>}
+            {(noImages || (sample && imagesOk === false)) && <ChatFallback />}
             {error && <div className="alert error small">{error}</div>}
             {running ? (
               <div className="progress-row">
@@ -530,5 +534,47 @@ function SettingsCard({ settings, onSave }: { settings: InstantSettings; onSave:
         {saved && <span className="small">Saved. Applies to new analyses.</span>}
       </div>
     </section>
+  );
+}
+
+/** Shown when this view can't send images: the same analyst, used directly in a Claude chat. */
+function ChatFallback() {
+  const [copied, setCopied] = useState<"yes" | "select" | null>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => box.current?.scrollIntoView({ behavior: "smooth", block: "center" }), []);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(CHAT_INSTRUCTIONS);
+      setCopied("yes");
+    } catch {
+      ref.current?.select();
+      setCopied("select");
+    }
+  };
+  return (
+    <div ref={box} className="alert warn stack fallback">
+      <div>
+        <strong>This Claude view can't send images from a page.</strong>
+        <p className="small">Two ways to analyse your charts right now:</p>
+      </div>
+      <ol className="small">
+        <li>
+          Open this same link in a <strong>web browser</strong> (Chrome or Safari) at claude.ai, signed in to your account, and analyse there.
+        </li>
+        <li>
+          Or use the analyst in a normal Claude chat: tap <strong>Copy instructions</strong>, start a new chat (or a Claude Project and paste them as the
+          project instructions), paste, then attach your chart screenshots and send. Same rules and the same 13-section report.
+        </li>
+      </ol>
+      <div className="row gap-s wrap">
+        <button className="btn primary small" onClick={() => void copy()}>
+          Copy instructions
+        </button>
+        {copied === "yes" && <span className="small">Copied. Paste it into a new Claude chat with your screenshots.</span>}
+        {copied === "select" && <span className="small">Selected below. Use your phone's Copy.</span>}
+      </div>
+      <textarea id="chat-instructions" ref={ref} className="instructions" readOnly value={CHAT_INSTRUCTIONS} rows={6} />
+    </div>
   );
 }

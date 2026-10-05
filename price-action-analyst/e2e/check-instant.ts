@@ -21,13 +21,14 @@ const wire: any = mockAnalysis({ images: [{ data: new Uint8Array(), mime: "image
 wire.setup.tp3 = -1;
 wire.levels.forEach((l: any) => (l.price_high = -1));
 
-const stub = (answer: unknown, opts: { limitsFail?: boolean; noSample?: boolean } = {}) => `
+const stub = (answer: unknown, opts: { limitsFail?: boolean; noSample?: boolean; noImages?: boolean } = {}) => `
   window.__calls = [];
   window.claude = { use: async (name) => {
     if (name === "sample") {
       if (${!!opts.noSample}) return null;
       const fn = async () => ({ text: "" });
       fn.json = async (input, opts) => {
+        if (${!!opts.noImages}) throw { code: "images_unavailable", message: "no images" };
         window.__calls.push({ len: input.length, images: opts.images.length, tier: opts.modelTier });
         await new Promise((r) => setTimeout(r, 1500));
         opts.onText({ text: "{", delta: "{" });
@@ -125,6 +126,20 @@ try {
     await p3.getByRole("button", { name: "Analyse charts" }).click();
     await p3.getByText("Claude is not available in this view. Open the link").waitFor();
     await c3.close();
+  }
+  {
+    const c4 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await c4.addInitScript(stub(wire, { noImages: true, limitsFail: true }));
+    const p4 = await c4.newPage();
+    await p4.goto(URL_);
+    await p4.getByText("Connected to Claude").waitFor();
+    await p4.locator("#chart-files").setInputFiles(["e2e/output/charts/XAUUSD_15m.png"]);
+    await p4.locator(".thumb").first().waitFor();
+    await p4.getByRole("button", { name: "Analyse charts" }).click();
+    await p4.getByText("This Claude view can't send images from a page.").waitFor();
+    assert.match(await p4.locator("#chat-instructions").inputValue(), /13. Final Decision/);
+    await p4.screenshot({ path: path.join(out, "5-no-images-fallback.png"), fullPage: false });
+    await c4.close();
   }
   console.log("Instant page check passed:", out);
 } finally {
