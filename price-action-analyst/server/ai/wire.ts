@@ -61,7 +61,14 @@ export function fromWire(schema: z.ZodType, value: unknown): unknown {
     for (const [k, v] of Object.entries(schema.shape as Record<string, z.ZodType>)) out[k] = fromWire(v, (value as Record<string, unknown>)[k]);
     return out;
   }
-  if (schema instanceof z.ZodArray && Array.isArray(value)) return value.map((v) => fromWire(schema.element as z.ZodType, v));
+  if (schema instanceof z.ZodArray) {
+    if (Array.isArray(value)) return value.map((v) => fromWire(schema.element as z.ZodType, v));
+    // Lenient: a missing list means "none found". Prompt-instructed JSON sometimes omits empty arrays.
+    if (value === undefined || value === null) return [];
+  }
+  if (value === undefined && schema instanceof z.ZodString) return "";
+  // Missing booleans default to false, the conservative reading (e.g. "price scale readable": no).
+  if (value === undefined && schema instanceof z.ZodBoolean) return false;
   return value;
 }
 

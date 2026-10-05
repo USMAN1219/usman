@@ -2,11 +2,11 @@
  * Contract tests run against every Repository implementation.
  * PostgreSQL runs only when TEST_DATABASE_URL is set (it is wiped and re-migrated).
  */
-import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MemoryRepository } from "../server/db/memory.ts";
 import { createSql, PostgresRepository } from "../server/db/postgres.ts";
+import { migrate } from "../server/db/schema.ts";
 import type { Repository } from "../server/db/types.ts";
 import { applyGuardrails } from "../server/analysis/guardrails.ts";
 import { mockAnalysis } from "../server/ai/mock.ts";
@@ -21,8 +21,8 @@ if (pgUrl) {
     async () => {
       const sql = createSql(pgUrl);
       await sql.unsafe("DROP TABLE IF EXISTS rate_events, notifications, watchlist, analyses, user_settings, users CASCADE");
-      await sql.unsafe(await readFile(new URL("../server/db/schema.sql", import.meta.url), "utf8"));
-      await sql.unsafe(await readFile(new URL("../server/db/schema.sql", import.meta.url), "utf8")); // idempotent
+      await Promise.all([migrate(sql), migrate(sql)]); // concurrent cold starts must not race
+      await migrate(sql); // idempotent
       return new PostgresRepository(sql);
     },
   ]);
@@ -121,5 +121,25 @@ describe.each(impls)("Repository contract: %s", (_name, make) => {
     expect(await repo.countRateEvents("k", since)).toBe(2);
     await repo.pruneRateEvents(new Date(Date.now() + 60_000).toISOString());
     expect(await repo.countRateEvents("k", since)).toBe(0);
+  });
+});
+
+describe.runIf(pgUrl)("auto-migration on an empty database", () => {
+  it("creates the schema on the first API request", async () => {
+    const { buildServices } = await import("../server/services.ts");
+    const { loadConfig } = await import("../server/config.ts");
+    const { testClient } = await import("./helpers.ts");
+    const freshUrl = pgUrl!.replace(/\/[^/]+$/, "/paa_fresh");
+    const wipe = createSql(freshUrl);
+    await wipe.unsafe("DROP TABLE IF EXISTS rate_events, notifications, watchlist, analyses, user_settings, users CASCADE");
+    await wipe.end();
+    const services = buildServices(
+      loadConfig({ APP_ENV: "test", DB_DRIVER: "postgres", DATABASE_URL: freshUrl, STORAGE_DRIVER: "memory", AI_PROVIDER: "mock" }),
+    );
+    const c = testClient(services);
+    const res = await c.request("POST", "/auth/register", { email: "fresh@example.com", password: "correct horse battery" });
+    expect(res.status).toBe(201);
+    expect((await c.request("GET", "/watchlist")).status).toBe(200);
+    await services.repo.close();
   });
 });

@@ -1,6 +1,6 @@
 # Price Action Analyst
 
-An AI chart-analysis web app for discretionary traders. Upload screenshots of the same instrument on several timeframes (1m–1D). A vision-capable AI model analyses them like a disciplined price-action trader, using **structure, liquidity, support/resistance, supply/demand, FVGs, BOS/CHOCH, order blocks, sweeps, displacement, and breakout/retest quality**, with **no indicators**. The result is either a potential setup or **NO TRADE — WAIT**.
+A free, web-based AI chart-analysis app for discretionary traders. Upload screenshots of the same instrument on several timeframes (1m–1D). A vision-capable AI model analyses them like a disciplined price-action trader, using **structure, liquidity, support/resistance, supply/demand, FVGs, BOS/CHOCH, order blocks, sweeps, displacement, and breakout/retest quality**, with **no indicators**. The result is either a potential setup or **NO TRADE — WAIT**.
 
 > ⚠️ AI analysis is probabilistic and may be wrong. Always independently verify the chart before taking any trade.
 > This app is an analysis assistant. It never connects to a broker and never places trades. You make every decision.
@@ -20,6 +20,10 @@ An AI chart-analysis web app for discretionary traders. Upload screenshots of th
 - **History** with filters, a **watchlist** with automatic Strong / Developing / Watch / No Setup status, and **optional alerts** (A/A+ setup, approaching level, sweep, breakout/retest, setup invalidated).
 - **Cost control**: usage and estimated cost per analysis and per month, rate limits, and a monthly budget cap.
 
+## Put it online for free
+
+Follow **[docs/FREE_SETUP.md](docs/FREE_SETUP.md)**. It needs only a web browser and three free accounts: Netlify, Neon and Google AI Studio (for the free Gemini key). No credit card, no terminal.
+
 ## Quick start (local, no API key needed)
 
 ```bash
@@ -31,12 +35,14 @@ npm run dev                 # web on http://localhost:5173, API on :8787
 
 The mock AI returns clearly labelled fake results, so you can explore the UI for free. Run `npm run charts:generate` to create test chart screenshots in `e2e/output/charts/`.
 
-To use the real model locally, set in `.env`:
+To use a real model locally, set in `.env` either the free Gemini key:
 
 ```
-AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
+AI_PROVIDER=gemini
+GEMINI_API_KEY=AIza...
 ```
+
+or the paid Claude API (`AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=sk-ant-...`).
 
 To persist data, set `DB_DRIVER=postgres` and `DATABASE_URL`, then run `npm run db:migrate`.
 
@@ -54,10 +60,11 @@ To persist data, set `DB_DRIVER=postgres` and `DATABASE_URL`, then run `npm run 
 
 ## Documentation
 
+- [docs/FREE_SETUP.md](docs/FREE_SETUP.md): free, browser-only deployment (Netlify + Neon + Gemini free tier).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data flow, guardrails, the pre-implementation review (limits, security risks, API constraints and how each is handled), testing.
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Netlify + PostgreSQL + Anthropic deployment, environment variables, costs, security checklist.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): full deployment reference, including the optional paid Claude model, environment variables, costs, security checklist.
 - [.env.example](.env.example): every configuration variable.
 
 ## Independence from Claude Code
 
-Claude Code was used only to build this project. The deployed app runs on Netlify and calls the Anthropic API with **your** API key. It keeps working with Claude Code closed or uninstalled, or with no Claude Code subscription. Analyses do need a funded Anthropic API account.
+Claude Code was used only to build this project. The deployed app runs on Netlify and calls the AI with **your** key: Google Gemini (free tier) by default, or the Anthropic API if you choose it. It keeps working with Claude Code closed or uninstalled, or with no Claude Code subscription.

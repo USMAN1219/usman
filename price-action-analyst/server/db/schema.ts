@@ -1,5 +1,11 @@
+/**
+ * Database schema (PostgreSQL 14+). Idempotent: applied automatically on first
+ * use (AUTO_MIGRATE=true, the default) and by `npm run db:migrate`.
+ */
+import type postgres from "postgres";
+
+export const SCHEMA_SQL = `
 -- Price Action Analyst database schema (PostgreSQL 14+).
--- Idempotent: safe to run on every deploy via `npm run db:migrate`.
 
 CREATE TABLE IF NOT EXISTS users (
   id            uuid PRIMARY KEY,
@@ -86,3 +92,12 @@ CREATE TABLE IF NOT EXISTS rate_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS rate_events_key_idx ON rate_events (key, created_at);
+`;
+
+/** Applies the schema under an advisory lock so concurrent cold starts don't race. */
+export async function migrate(sql: postgres.Sql): Promise<void> {
+  await sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(724117)`;
+    await tx.unsafe(SCHEMA_SQL);
+  });
+}

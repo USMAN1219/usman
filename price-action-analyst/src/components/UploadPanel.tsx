@@ -204,6 +204,12 @@ export function UploadPanel({ onSubmitted }: { onSubmitted?: () => void }) {
         </label>
       </div>
 
+      {config?.aiProvider === "gemini" && (
+        <p className="tiny muted">
+          Free AI mode (Google Gemini free tier): Google may use uploaded screenshots to improve its products. Don't upload anything private, such as
+          account numbers or balances.
+        </p>
+      )}
       {missingLabels && items.length > 0 && (
         <p className="small muted">Tip: set each screenshot's timeframe. If unset, the AI will try to read it from the chart.</p>
       )}
@@ -222,7 +228,7 @@ export function UploadPanel({ onSubmitted }: { onSubmitted?: () => void }) {
       <div className="row between">
         <span className="small muted">{items.length ? `${items.length} image(s), ${totalKb} KB after compression` : ""}</span>
         <button className="btn primary" disabled={!items.length || busy || preparing} onClick={() => void submit(false)}>
-          {busy ? "Uploading…" : "Analyse charts"}
+          {busy ? "Analysing… (up to ~1 min)" : "Analyse charts"}
         </button>
       </div>
     </section>

@@ -21,7 +21,9 @@ export function createApp(resolveServices: () => Services = getServices) {
   app.notFound((c) => errorResponse(c, notFound("Unknown API route.")));
   app.use("*", apiHeaders);
   app.use("*", async (c, next) => {
-    c.set("services", resolveServices());
+    const services = resolveServices();
+    c.set("services", services);
+    if (c.req.path !== "/api/health") await services.ready();
     await next();
   });
   app.use("*", csrfGuard);
@@ -41,7 +43,7 @@ export function createApp(resolveServices: () => Services = getServices) {
       maxImageBytes: config.MAX_IMAGE_BYTES,
       maxTotalBytes: config.MAX_TOTAL_UPLOAD_BYTES,
       aiProvider: config.AI_PROVIDER,
-      model: config.AI_PROVIDER === "mock" ? "mock" : config.ANTHROPIC_MODEL,
+      model: config.AI_PROVIDER === "mock" ? "mock" : config.AI_PROVIDER === "gemini" ? config.GEMINI_MODEL : config.ANTHROPIC_MODEL,
       pricing: config.pricing,
       disclaimer: DISCLAIMER,
     });

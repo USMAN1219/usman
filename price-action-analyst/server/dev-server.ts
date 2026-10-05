@@ -8,6 +8,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./http/app.ts";
 import { log } from "./logger.ts";
 
+process.env.APP_ENV ??= "development";
 process.env.ANALYSIS_EXECUTION ??= "async";
 process.env.DB_DRIVER ??= process.env.DATABASE_URL ? "postgres" : "memory";
 process.env.STORAGE_DRIVER ??= "fs";

@@ -157,7 +157,8 @@ export function SettingsPage() {
         <ul className="small">
           <li>
             AI model: {config?.model ?? "—"}
-            {config?.pricing && config.aiProvider !== "mock" ? ` (≈ $${config.pricing.input}/$${config.pricing.output} per million input/output tokens)` : ""}.
+            {config?.aiProvider === "gemini" && config.pricing.input === 0 ? " (Google Gemini free tier — no cost, limited requests per minute/day)" : ""}
+            {config?.pricing && config.aiProvider === "anthropic" ? ` (≈ $${config.pricing.input}/$${config.pricing.output} per million input/output tokens)` : ""}.
           </li>
           <li>Price action only — no indicators. No automated trading, no broker connection.</li>
           <li>Confidence levels describe evidence quality, never a probability of profit.</li>

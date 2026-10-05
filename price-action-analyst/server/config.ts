@@ -34,7 +34,8 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 };
 
 const EnvSchema = z.object({
-  APP_ENV: z.enum(["production", "development", "test"]).default("development"),
+  // Secure by default: anything not explicitly development/test is treated as production.
+  APP_ENV: z.enum(["production", "development", "test"]).default("production"),
   APP_URL: z.string().url().optional(),
   AUTH_SECRET: z.string().optional(),
   SESSION_TTL_HOURS: num(24 * 7),
@@ -47,7 +48,11 @@ const EnvSchema = z.object({
   STORAGE_DRIVER: z.enum(["netlify", "fs", "memory"]).default("netlify"),
   FS_STORAGE_DIR: z.string().default(".data/uploads"),
 
-  AI_PROVIDER: z.enum(["anthropic", "mock"]).default("anthropic"),
+  // gemini = Google Gemini API free tier (no card needed); anthropic = Claude (paid); mock = fake results.
+  AI_PROVIDER: z.enum(["gemini", "anthropic", "mock"]).default("gemini"),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  GEMINI_TIMEOUT_MS: optionalNum,
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-opus-5-5"),
   ANTHROPIC_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("high"),
@@ -59,7 +64,7 @@ const EnvSchema = z.object({
 
   // background = Netlify Background Function; async = in-process without waiting (long-running Node server only);
   // inline = finish before responding (tests / scripts).
-  ANALYSIS_EXECUTION: z.enum(["background", "async", "inline"]).default("background"),
+  ANALYSIS_EXECUTION: z.enum(["background", "async", "inline"]).default("inline"),
   INTERNAL_JOB_SECRET: z.string().optional(),
 
   RATE_LIMIT_ANALYSES_PER_HOUR: num(10),
@@ -67,6 +72,7 @@ const EnvSchema = z.object({
   MONTHLY_BUDGET_USD: optionalNum,
   LOGIN_ATTEMPTS_PER_15_MIN: num(10),
   DUPLICATE_WINDOW_HOURS: num(24),
+  AUTO_MIGRATE: bool(true),
 
   MAX_IMAGES: num(6),
   MAX_IMAGE_BYTES: num(1_500_000),
@@ -103,7 +109,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
   if (c.DB_DRIVER === "postgres" && !c.DATABASE_URL) problems.push("DATABASE_URL is required when DB_DRIVER=postgres.");
   if (c.AI_PROVIDER === "anthropic" && !c.ANTHROPIC_API_KEY && isProduction)
-    problems.push("ANTHROPIC_API_KEY is required in production.");
+    problems.push("ANTHROPIC_API_KEY is required in production when AI_PROVIDER=anthropic.");
+  if (c.AI_PROVIDER === "gemini" && !c.GEMINI_API_KEY && isProduction)
+    problems.push("GEMINI_API_KEY is required in production when AI_PROVIDER=gemini (free key: aistudio.google.com).");
   if (c.ANALYSIS_EXECUTION === "background" && (c.INTERNAL_JOB_SECRET ?? "").length < 32)
     problems.push("INTERNAL_JOB_SECRET (32+ characters) is required when ANALYSIS_EXECUTION=background.");
   if (isProduction) {
@@ -112,11 +120,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     if (c.AI_PROVIDER === "mock") problems.push("AI_PROVIDER=mock is not allowed in production.");
     if (c.ANALYSIS_EXECUTION === "async")
       problems.push("ANALYSIS_EXECUTION=async is for long-running local servers only; use 'background' (or 'inline') on Netlify.");
-    if (!c.APP_URL) problems.push("APP_URL (or Netlify's URL) is required in production for origin checks.");
   }
   if (problems.length) throw new ConfigError(problems.join(" "));
 
-  const known = MODEL_PRICING[c.ANTHROPIC_MODEL] ?? { input: 0, output: 0 };
+  // Gemini free tier costs nothing; set AI_PRICE_* if you move to a paid Gemini tier.
+  const known = c.AI_PROVIDER === "anthropic" ? (MODEL_PRICING[c.ANTHROPIC_MODEL] ?? { input: 0, output: 0 }) : { input: 0, output: 0 };
   return {
     ...c,
     isProduction,

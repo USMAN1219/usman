@@ -3,7 +3,7 @@ import { Disclaimer } from "../components/Disclaimer.tsx";
 import { useAuth } from "../lib/auth.tsx";
 
 export function LoginPage() {
-  const { login, register, config } = useAuth();
+  const { login, register, config, setupError } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +37,7 @@ export function LoginPage() {
           blocks, and a potential setup — or a clear <strong>NO TRADE — WAIT</strong>. You make every decision; nothing is
           traded automatically.
         </p>
+        {setupError && <div className="alert error small">{setupError}</div>}
         <form onSubmit={submit} className="stack">
           <label>
             Email

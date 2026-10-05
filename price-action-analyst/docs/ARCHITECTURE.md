@@ -16,11 +16,12 @@ Browser (React SPA, Netlify CDN)
   │
   │  POST /.netlify/functions/analyze-background  (INTERNAL_JOB_SECRET)
   ▼
-Netlify Background Function "analyze-background" (≤15 min)
+Analysis job: inline inside the api function (default, free plan, ≤60 s)
+  or Netlify Background Function "analyze-background" (≤15 min, ANALYSIS_EXECUTION=background)
   │  loads screenshots → Claude vision call (streaming, structured output)
   │  → schema validation → deterministic guardrails → save → alerts
   ▼
-Anthropic Messages API (claude-opus-5-5 by default)
+Google Gemini API (free tier, default)  or  Anthropic Messages API (claude-opus-5-5, paid)
 ```
 
 The browser polls `GET /api/analyses/:id` every 3 s until the job is `completed` or `failed`.
@@ -33,6 +34,7 @@ The browser polls `GET /api/analyses/:id` every 3 s until the job is `completed`
 | `shared/risk.ts` | Deterministic R:R, level validation and position sizing |
 | `shared/annotation.ts` | Price-axis calibration and conversion of the analysis into drawable shapes |
 | `server/ai/prompt.ts` | Frozen analyst system prompt (prompt-cached) and the per-request user prompt |
+| `server/ai/gemini.ts` | Gemini call (free tier, default): REST generateContent, responseSchema with JSON-mode fallback, free-tier limit messages |
 | `server/ai/analyzer.ts` | Claude call: images, adaptive thinking, effort, strict JSON schema, fallbacks, error mapping, cost |
 | `server/ai/wire.ts`, `json-schema.ts` | Union-free "wire" schema for structured outputs and its strict JSON Schema |
 | `server/analysis/guardrails.ts` | Rules applied to every model answer before the user sees it |
@@ -91,20 +93,16 @@ The browser polls `GET /api/analyses/:id` every 3 s until the job is `completed`
 
 ## Independence from Claude Code
 
-Claude Code was only the development tool. The deployed app is ordinary static files plus Netlify Functions that call the **Anthropic API** with the operator's own API key (`ANTHROPIC_API_KEY`). Nothing in the runtime imports, calls or checks Claude Code, and the bundle contains no developer credentials. You can close or uninstall Claude Code, or let its subscription lapse, and the app keeps running.
+Claude Code was only the development tool. The deployed app is ordinary static files plus Netlify Functions that call the AI with the operator's own key: **Google Gemini** (`GEMINI_API_KEY`, free tier) by default, or the **Anthropic API** (`ANTHROPIC_API_KEY`) if `AI_PROVIDER=anthropic`. Nothing in the runtime imports, calls or checks Claude Code, and the bundle contains no developer credentials. You can close or uninstall Claude Code, or let its subscription lapse, and the app keeps running.
 
-What the app *does* need:
-- an active Anthropic API account with credit (console.anthropic.com), billed per analysis;
-- the Netlify site, the PostgreSQL database and Netlify Blobs.
-
-If the API key is revoked or the API account runs out of credit, analyses fail with a clear message ("insufficient credit" / "API key rejected"). History, the watchlist and settings keep working.
+What the app *does* need: the Netlify site, the PostgreSQL database (Neon free tier works), Netlify Blobs, and a valid AI key. If the key is invalid or a quota is exhausted, analyses fail with a clear message, while history, the watchlist and settings keep working.
 
 ## Testing
 
 | Command | What it covers |
 |---|---|
-| `npm test` | 47 unit + integration tests: risk maths, guardrails, wire schema limits, the analyzer against a fake streaming Messages API (request shape, refusals, truncation, schema-fallback, auth/credit errors, cost), and API routes (auth, CSRF, brute-force limits, invite codes, upload validation, duplicate detection, rate limits, monthly budget, user isolation, retry, deletion, watchlist, alerts, daily risk) |
-| `TEST_DATABASE_URL=… npm test` | Also runs the repository contract tests against a real PostgreSQL |
+| `npm test` | Unit + integration tests: risk maths, guardrails, wire schema limits, the Claude analyzer against a fake streaming Messages API and the Gemini analyzer against a fake generateContent API (request shape, refusals, truncation, schema fallback, key/quota errors, cost), and API routes (auth, CSRF, brute-force limits, invite codes, upload validation, duplicate detection, rate limits, monthly budget, user isolation, retry, deletion, watchlist, alerts, daily risk) |
+| `TEST_DATABASE_URL=… npm test` | Also runs the repository contract tests and auto-migration against a real PostgreSQL (53 tests in total) |
 | `npm run build && npm run test:e2e` | Chromium end-to-end on the built app with synthetic 4H/1H/15M charts: register → watchlist → settings → upload → analysis → annotation placement (SL line within 1 px of the true axis position) → layer toggle → trade journal → duplicate detection → history → watchlist status → mobile layout (no horizontal overflow) → no browser errors |
 | `E2E_REAL_AI=1 npm run test:e2e` | Same flow against the real model (costs money) |
 | `npm run analyze:file -- --symbol EURUSD 4h=a.png 15m=b.png` | Runs the real AI pipeline on your own screenshots from the command line |

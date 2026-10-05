@@ -55,7 +55,7 @@ export function testServices(overrides: Record<string, string> = {}, analyzer?: 
     ANALYSIS_EXECUTION: "inline",
     ...overrides,
   });
-  return { config, repo: new MemoryRepository(), storage: new MemoryBlobStore(), analyzer: analyzer ?? new MockChartAnalyzer() };
+  return { config, repo: new MemoryRepository(), storage: new MemoryBlobStore(), analyzer: analyzer ?? new MockChartAnalyzer(), ready: async () => {} };
 }
 
 export function testClient(services: Services) {

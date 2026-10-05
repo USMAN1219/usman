@@ -16,6 +16,7 @@ export const JOB_STALE_AFTER_MS = 16 * 60 * 1000;
 
 export async function runAnalysisJob(services: Services, analysisId: string): Promise<void> {
   const { repo, storage, analyzer } = services;
+  await services.ready();
   const claimed = await repo.claimAnalysis(analysisId);
   if (!claimed) {
     log.warn("analysis.job_not_claimed", { analysisId });

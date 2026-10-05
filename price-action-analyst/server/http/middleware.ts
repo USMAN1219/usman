@@ -2,6 +2,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import { ZodError } from "zod";
 import { verifySessionToken, SESSION_COOKIE } from "../auth/session.ts";
+import { ConfigError } from "../config.ts";
 import { AppError, forbidden, unauthorized } from "../errors.ts";
 import { log } from "../logger.ts";
 import type { Services } from "../services.ts";
@@ -24,6 +25,11 @@ export function errorResponse(c: Context, err: unknown) {
       },
     };
     return c.json(body, 400);
+  }
+  if (err instanceof ConfigError) {
+    // Names which setting is missing/invalid (never its value) so the operator can fix it in Netlify.
+    log.error("config.invalid", { message: err.message });
+    return c.json({ error: { code: "server_not_configured", message: `Server setup problem: ${err.message}` } } satisfies ApiErrorBody, 503);
   }
   log.error("http.unhandled_error", { path: c.req.path, error: err instanceof Error ? err.stack : String(err) });
   return c.json({ error: { code: "internal_error", message: "Something went wrong. Please try again." } } satisfies ApiErrorBody, 500);
